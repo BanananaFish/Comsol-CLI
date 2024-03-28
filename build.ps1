@@ -1,0 +1,1 @@
+pyinstaller -F --specpath dist main.py
