@@ -9,4 +9,4 @@ _internal
 *.exe
 *.spec
 __pycache__
-# play.ipynb
+play.ipynb
