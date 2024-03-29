@@ -21,7 +21,7 @@ jobs:
           options: --onefile, --name "consol_CLI"
       - name: create release
         id: create_release
-        uses: actions/create-release@v1.14.0
+        uses: ncipollo/release-action@v1.14.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
