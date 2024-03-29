@@ -1,0 +1,9 @@
+MPh
+numpy
+pandas
+pyinstaller
+typing-extensions
+loguru
+click
+pyyaml
+rich
