@@ -1,7 +1,5 @@
 import click
-from rich.live import Live
 from rich.progress import track
-from traitlets import default
 
 from interface import Comsol
 from utils import Config
