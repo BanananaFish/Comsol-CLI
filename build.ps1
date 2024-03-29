@@ -1,1 +1,1 @@
-pyinstaller -F --specpath dist main.py
+pyinstaller -F --specpath dist src/main.py
