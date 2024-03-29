@@ -10,12 +10,35 @@ jobs:
   pyinstaller-build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
       - name: Create Executable
         uses: sayyid5416/pyinstaller@v1
         with:
           python_ver: '3.10'
           spec: 'src/main.py'
           requirements: 'src/requirements.txt'
+          exe_path: 'dist/windows'
           upload_exe_with_name: 'consol_CLI'
-          options: --onefile, --name "consol_CLI", 
+          options: --onefile, --name "consol_CLI"
+      - name: create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.head_commit.message }}
+          release_name: ${{ github.event.head_commit.message }}
+          overwrite: true
+          body: |
+            Test Release v1.0.0
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{steps.create_release.outputs.upload_url}}
+          asset_path: dist/consol_CLI.exe
+          asset_name: consol-CLI-Windows-amd64.exe
+          asset_content_type: application/zip
