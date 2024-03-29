@@ -1,0 +1,12 @@
+/exports/**/*.txt
+/exports/**/*.pkl
+/models/**/*.mph
+/models/**/*.mph.bk
+/build
+/dist
+.vscode
+_internal
+*.exe
+*.spec
+__pycache__
+# play.ipynb
