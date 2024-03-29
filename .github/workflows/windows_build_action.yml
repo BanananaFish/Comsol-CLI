@@ -21,12 +21,12 @@ jobs:
           options: --onefile, --name "consol_CLI"
       - name: create release
         id: create_release
-        uses: actions/create-release@v1
+        uses: actions/create-release@v1.14.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.event.head_commit.message }}
-          release_name: ${{ github.event.head_commit.message }}
+          # tag: ${{ github.event.head_commit.message }}
+          name: ${{ github.event.head_commit.message }}
           body: |
             Test Release v1.0.0
           draft: false
