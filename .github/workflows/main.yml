@@ -7,18 +7,14 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
-
-    runs-on: ubuntu-latest
-
+  pyinstaller-build:
+    runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: PyInstaller Windows
-      uses: JackMcKew/pyinstaller-action-windows@main
-      with:
-        path: src
-
-    - uses: actions/upload-artifact@v2
-      with:
-        name: comsol
-        path: dist/windows
+      - name: Create Executable
+        uses: sayyid5416/pyinstaller@v1
+        with:
+          python_ver: '3.10'
+          spec: 'src/main.py'
+          requirements: 'src/requirements.txt'
+          upload_exe_with_name: 'consol_CLI'
+          options: --onefile, --name "consol_CLI", 
