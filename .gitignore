@@ -3,7 +3,7 @@
 /models/**/*.mph
 /models/**/*.mph.bk
 /build
-/dist
+/dist/**
 .vscode
 _internal
 *.exe
