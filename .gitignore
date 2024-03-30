@@ -13,3 +13,4 @@ __pycache__
 play.ipynb
 ckpt
 conda
+*.ps1

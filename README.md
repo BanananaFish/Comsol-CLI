@@ -8,5 +8,17 @@
 ```powershell
 comsol_CLI.exe --help
 
-comsol_CLI.exe run --model <MPH path> --config <config yaml>
+# 获取实验结果
+comsol_CLI.exe run --model <MPH path> --config <config yaml> [--dump]
+
+# 训练
+comsol_CLI.exe train --saved <pickles path> --config <config yaml> --ckpt_path <ckpt dir>
+
+# 搜索最优参数
+comsol_CLI.exe ga --ckpt <model.pth path> --saved <pickles path>
+```
+
+## 自己打包
+```powershell
+pyinstaller -F --specpath dist/windows src/comsol/cmdline.py
 ```
