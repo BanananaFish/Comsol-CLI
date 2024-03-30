@@ -1,6 +1,8 @@
 import pickle
 from dataclasses import dataclass
+from datetime import datetime
 from itertools import product
+from os import PathLike
 from pathlib import Path
 
 import numpy as np
@@ -66,10 +68,15 @@ class Config:
 
         return res
 
+    def dump(self, path: PathLike | str):
+        with open(path, "w") as f:
+            yaml.dump(self.config, f)
+
 
 class Trainer:
     def __init__(self, dataset, model, cfg: Config):
         self.model = model
+        self.cfg = cfg
 
         self.epoch: int = cfg["train"]["epoch"]
         self.batch_size: int = cfg["train"]["batch_size"]
@@ -85,6 +92,8 @@ class Trainer:
         )
         self.train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
         self.test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
+
+        self.start_time = datetime.now()
 
     def train(self):
         self.model.train()
@@ -105,8 +114,8 @@ class Trainer:
                 if i % 10 == 0:
                     logger.info(f"Epoch {epoch}, iter {i}, loss: {loss.item():.3f}")
             self.test()
-        # self.save_ckpt(f"epoch_{self.epoch}_loss_{self.best_loss:.3f}")
         self.save_ckpt("lastest")
+        logger.info(f"Training finished, best loss: {self.best_loss:.3f}")
 
     def test(self):
         self.model.eval()
@@ -123,12 +132,19 @@ class Trainer:
         if now_loss < self.best_loss:
             self.best_loss = now_loss
             self.best_ckpt = self.model.state_dict()
-            self.save_ckpt(f"best_loss_{now_loss:.3f}")
+            self.save_ckpt(f"best")
 
     def save_ckpt(self, name):
-        ckpt_path = Path(f"ckpt/{name}.pth")
-        ckpt_path.parent.mkdir(parents=True, exist_ok=True)
-        torch.save(self.model.state_dict(), ckpt_path)
+        ckpt_path = Path(f"ckpt") / f"{self.start_time:%Y.%m.%d_%H.%M.%S}"
+        ckpt_path.mkdir(parents=True, exist_ok=True)
+
+        pth_path = ckpt_path / f"{name}.pth"
+        cfg_path = ckpt_path / f"config.yaml"
+        if not cfg_path.exists():
+            self.cfg.dump(cfg_path)
+            logger.info(f"Dumped config to {cfg_path}")
+        torch.save(self.model.state_dict(), pth_path)
+        logger.info(f"Saved model to {pth_path}")
 
 
 class BandDataset(Dataset):
@@ -178,7 +194,7 @@ class BandDataset(Dataset):
         res = res * (self.res_max - self.res_min) + self.res_min
         return params, res
 
-    def __init__(self, saved_path):
+    def __init__(self, saved_path: PathLike | str):
         self.params_mins = []
         self.params_maxs = []
 
