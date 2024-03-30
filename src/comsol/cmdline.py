@@ -1,9 +1,9 @@
 import click
 from rich.progress import track
 
-from interface import Comsol
-from utils import Config, BandDataset, Trainer
-from model import MLP
+from comsol.interface import Comsol
+from comsol.utils import Config, BandDataset, Trainer
+from comsol.model import MLP
 
 
 @click.group()
@@ -38,7 +38,7 @@ def train(saved, config, ckpt_path):
     cfg = Config(config)
     dataset = BandDataset(saved)
     model = MLP()
-    trainer = Trainer(model, dataset, cfg)
+    trainer = Trainer(dataset, model, cfg)
     trainer.train()
 
 

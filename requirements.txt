@@ -8,3 +8,4 @@ click
 pyyaml
 rich
 torch
+pygad

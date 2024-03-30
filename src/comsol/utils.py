@@ -9,12 +9,14 @@ import numpy as np
 import pandas as pd
 import torch
 import yaml
-from interface import Param
 from loguru import logger
-from model import MLP
+from numpy.typing import ArrayLike
 from rich.progress import track
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
+
+from comsol.interface import Param
+from comsol.model import MLP
 
 
 class Config:
@@ -95,9 +97,15 @@ class Trainer:
 
         self.start_time = datetime.now()
 
+    @staticmethod
+    def to_cuda(obj):
+        if torch.cuda.is_available():
+            return obj.cuda()
+        return obj
+
     def train(self):
         self.model.train()
-        self.model.cuda()
+        self.model = self.to_cuda(self.model)
         for epoch in range(1, self.epoch + 1):
             for i, (x, y) in track(
                 enumerate(self.train_loader),
@@ -105,7 +113,7 @@ class Trainer:
                 description=f"Epoch {epoch}",
                 auto_refresh=False,
             ):
-                x, y = x.cuda(), y.cuda()
+                x, y = self.to_cuda(x), self.to_cuda(y)
                 self.optimizer.zero_grad()
                 y_pred = self.model(x)
                 loss = self.loss(y_pred, y)
@@ -116,6 +124,7 @@ class Trainer:
             self.test()
         self.save_ckpt("lastest")
         logger.info(f"Training finished, best loss: {self.best_loss:.3f}")
+        self.save_ckpt(f"best_loss_{self.best_loss:.3f}")
 
     def test(self):
         self.model.eval()
@@ -124,7 +133,7 @@ class Trainer:
             for x, y in track(
                 self.test_loader, description="Testing", auto_refresh=False
             ):
-                x, y = x.cuda(), y.cuda()
+                x, y = self.to_cuda(x), self.to_cuda(y)
                 y_pred = self.model(x)
                 losses += self.loss(y_pred, y)
         now_loss = losses / len(self.test_loader)
@@ -132,7 +141,6 @@ class Trainer:
         if now_loss < self.best_loss:
             self.best_loss = now_loss
             self.best_ckpt = self.model.state_dict()
-            self.save_ckpt(f"best")
 
     def save_ckpt(self, name):
         ckpt_path = Path(f"ckpt") / f"{self.start_time:%Y.%m.%d_%H.%M.%S}"
@@ -151,7 +159,7 @@ class BandDataset(Dataset):
     Bs_filter = set(("B0_1", "B0_11"))
 
     @staticmethod
-    def get_Bs(res_arr: np.ndarray):
+    def get_Bs(res_arr):
         Bs: list[tuple[str, float]] = []
         x_mid = res_arr[:, 0][len(res_arr) // 2]
         res_arr_0 = res_arr[res_arr[:, 0] == 0]
@@ -171,7 +179,7 @@ class BandDataset(Dataset):
                     res_arr_0 = res_arr_0[1:]
 
         res = np.array([b[1] for b in Bs if b[0] not in BandDataset.Bs_filter])
-        assert len(res) == 10
+        assert len(res) == 10, f"res length is {len(res)}"
         return res
 
     @staticmethod

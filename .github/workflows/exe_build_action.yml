@@ -16,8 +16,8 @@ jobs:
         uses: sayyid5416/pyinstaller@v1
         with:
           python_ver: '3.10'
-          spec: 'src/main.py'
-          requirements: 'src/requirements.txt'
+          spec: 'src/comsol/cmdline.py'
+          requirements: 'requirements.txt'
           exe_path: 'dist/windows'
           upload_exe_with_name: 'consol_CLI'
           options: --onefile, --name "consol_CLI"

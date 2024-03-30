@@ -1,1 +1,1 @@
-pyinstaller -F --specpath dist src/main.py
+pyinstaller -F --specpath dist src/comsol/cmdline.py
