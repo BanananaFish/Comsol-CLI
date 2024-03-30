@@ -1,9 +1,6 @@
 import click
+from rich import print as rprint
 from rich.progress import track
-
-from comsol.interface import Comsol
-from comsol.utils import Config, BandDataset, Trainer
-from comsol.model import MLP
 
 
 @click.group()
@@ -16,6 +13,10 @@ def main():
 @click.option("--config", help="Path to the config yaml.", default="config/cell.yaml")
 @click.option("--dump", help="Dump model file after study", is_flag=True)
 def run(model, config, dump):
+    rprint(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
+    from comsol.interface import Comsol
+    from comsol.utils import Config
+
     click.echo(f"Running model {model}, CFG: {config}, dump: {dump}")
     cfg = Config(config)
     cli = Comsol(model, *cfg.params)
@@ -32,9 +33,13 @@ def run(model, config, dump):
 @click.option("--config", help="Path to the config yaml.", default="config/cell.yaml")
 @click.option("--ckpt_path", help="Path to the checkpoint file.", default="ckpt")
 def train(saved, config, ckpt_path):
+    rprint(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
     click.echo(
         f"Training model with saved {saved}, CFG: {config}, ckpt_path: {ckpt_path}"
     )
+    from comsol.model import MLP
+    from comsol.utils import BandDataset, Config, Trainer
+
     cfg = Config(config)
     dataset = BandDataset(saved)
     model = MLP()
@@ -42,6 +47,15 @@ def train(saved, config, ckpt_path):
     trainer.train()
 
 
+@main.command()
+@click.option("--ckpt", help="Path to the checkpoint file.", default="ckpt/latest.pth")
+@click.option("--saved", help="Path to saved pickles.", default="export/saved")
+def ga(ckpt, saved):
+    rprint(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
+    from comsol.ga import fit
+
+    fit(ckpt, saved)
+
+
 if __name__ == "__main__":
-    click.echo("Comsol CLI! by Bananafish")
     main()
