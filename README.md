@@ -5,6 +5,7 @@
 2. 下载可执行文件（不要下载源码）
 
 ## 执行
+请在终端中执行（CMD或PowerShell）
 ```powershell
 comsol_CLI.exe --help
 
