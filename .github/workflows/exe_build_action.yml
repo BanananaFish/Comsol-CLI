@@ -30,7 +30,7 @@ jobs:
           # tag: ${{ github.event.head_commit.message }}
           # name: ${{ github.event.head_commit.message }}
           body: |
-            Test Release v1.0.0
+            CLI Release
           draft: false
           prerelease: false
           allowUpdates: true
