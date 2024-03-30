@@ -1,1 +1,0 @@
-pyinstaller -F --specpath dist src/comsol/cmdline.py
