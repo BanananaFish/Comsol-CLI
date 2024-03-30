@@ -11,3 +11,6 @@ _internal
 *.spec
 __pycache__
 play.ipynb
+ckpt
+conda
+*.ps1
