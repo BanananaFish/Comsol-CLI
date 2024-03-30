@@ -91,7 +91,7 @@ class Comsol:
         self.study_count += 1
 
     def save(self):
-        dest = Path("exports") / "saved" / f"res_{self.study_count}.pkl"
+        dest = Path("exports") / "saved" / f"res_{self.study_count:04d}.pkl"
         dest.parent.mkdir(parents=True, exist_ok=True)
         if self.export_file.exists():
             with open(dest, "wb") as f:
@@ -99,7 +99,7 @@ class Comsol:
             logger.info(f"Results saved to {dest}")
 
     def dump(self):
-        dest = Path("models") / "saved" / f"cell_{self.study_count}.mph"
+        dest = Path("models") / "saved" / f"cell_{self.study_count:04d}.mph"
         dest.parent.mkdir(parents=True, exist_ok=True)
         self.cell.save(dest)
         logger.info(f"Model dumped to {dest}")

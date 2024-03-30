@@ -39,7 +39,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: consol_CLI
           files: |
             dist/windows/consol_CLI.exe
             dist/windows/README.md

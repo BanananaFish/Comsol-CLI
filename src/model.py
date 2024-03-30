@@ -2,11 +2,13 @@ import torch
 from torch import nn
 
 
-class MLP(nn.modules):
-    def __init__(self, param_nums: int = 3):
+class MLP(nn.Module):
+    def __init__(self, int_nums: int = 3, out_nums: int = 10):
         super(MLP, self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(param_nums, 2**4),
+            nn.Linear(int_nums, 2**3),
+            nn.ReLU(),
+            nn.Linear(2**3, 2**4),
             nn.ReLU(),
             nn.Linear(2**4, 2**5),
             nn.ReLU(),
@@ -14,14 +16,8 @@ class MLP(nn.modules):
             nn.ReLU(),
             nn.Linear(2**6, 2**7),
             nn.ReLU(),
-            nn.Linear(2**7, 2**8),
-            nn.ReLU(),
-            nn.Linear(2**8, 2**9),
-            nn.ReLU(),
-            nn.Linear(2**9, 128),
-            nn.ReLU(),
-            nn.Linear(128, 10),
-            nn.ReLU(),
+            nn.Linear(2**7, out_nums),
+            # 能带值必然是正值，ReLU一下
         )
 
     def forward(self, x):
