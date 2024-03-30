@@ -5,8 +5,8 @@ on:
     tags:
       - '*'
   pull_request:
-    branches:
-      - 'master'
+    tags:
+      - '*'
 
 jobs:
   pyinstaller-build:
