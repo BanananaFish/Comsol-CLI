@@ -1,3 +1,4 @@
+import functools
 import pickle
 from dataclasses import dataclass
 from datetime import datetime
@@ -124,7 +125,7 @@ class Trainer:
             self.test()
         self.save_ckpt("lastest")
         logger.info(f"Training finished, best loss: {self.best_loss:.3f}")
-        self.save_ckpt(f"best_loss_{self.best_loss:.3f}")
+        self.save_ckpt(f"best_loss_{self.best_loss:.3f}", best=True)
 
     def test(self):
         self.model.eval()
@@ -142,7 +143,7 @@ class Trainer:
             self.best_loss = now_loss
             self.best_ckpt = self.model.state_dict()
 
-    def save_ckpt(self, name):
+    def save_ckpt(self, name, best=False):
         ckpt_path = Path(f"ckpt") / f"{self.start_time:%Y.%m.%d_%H.%M.%S}"
         ckpt_path.mkdir(parents=True, exist_ok=True)
 
@@ -151,7 +152,10 @@ class Trainer:
         if not cfg_path.exists():
             self.cfg.dump(cfg_path)
             logger.info(f"Dumped config to {cfg_path}")
-        torch.save(self.model.state_dict(), pth_path)
+        if best:
+            torch.save(self.best_ckpt, pth_path)
+        else:
+            torch.save(self.model.state_dict(), pth_path)
         logger.info(f"Saved model to {pth_path}")
 
 

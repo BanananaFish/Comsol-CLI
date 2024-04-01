@@ -19,8 +19,8 @@ jobs:
           spec: 'src/comsol/cmdline.py'
           requirements: 'requirements.txt'
           exe_path: 'dist/windows'
-          upload_exe_with_name: 'consol_CLI'
-          options: --onefile, --name "consol_CLI"
+          upload_exe_with_name: 'comsol_CLI'
+          options: --onefile, --name "comsol_CLI"
       - name: create release
         id: create_release
         uses: ncipollo/release-action@v1.14.0
@@ -40,5 +40,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            dist/windows/consol_CLI.exe
+            dist/windows/comsol_CLI.exe
             dist/windows/README.md

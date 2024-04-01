@@ -44,7 +44,10 @@ def train(saved, config, ckpt_path):
     dataset = BandDataset(saved)
     model = MLP()
     trainer = Trainer(dataset, model, cfg)
-    trainer.train()
+    try:
+        trainer.train()
+    except KeyboardInterrupt:
+        trainer.save_ckpt(f"earlystop_best_{trainer.best_loss:.3f}.pth", best=True)
 
 
 @main.command()

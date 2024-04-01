@@ -1,8 +1,8 @@
 import numpy
 import pygad
 import torch
-
 from loguru import logger
+
 from comsol.model import MLP
 from comsol.utils import BandDataset
 
@@ -19,7 +19,7 @@ def fit(ckpt, pkl_path):
         Bs: numpy.ndarray = (
             net(torch.tensor([solution]).float()).detach().numpy().flatten()
         )
-        return abs(Bs[2] - Bs[0])
+        return abs((Bs[1] + Bs[2]) / 2 - Bs[0])
 
     fitness_function = fitness_func
 
@@ -57,6 +57,10 @@ def fit(ckpt, pkl_path):
 
     prediction = net(torch.tensor([solution]).float()).detach().numpy().flatten()
     solution, prediction = dataset.denormalization(solution, prediction)
+    solution[0] = solution[0] * 360
     logger.info(f"Parameters of the best solution : {solution}")
     logger.info(f"Predicted output based on the best solution : {prediction}")
-    logger.info(f"Fitness value of the best solution = {solution_fitness}")
+    logger.info(f"Fitness value of the best solution : {solution_fitness}")
+    logger.info(
+        f"Fitness value of the best solution denormalization= {solution_fitness * (dataset.res_max - dataset.res_min) + dataset.res_min:.5e}"
+    )
