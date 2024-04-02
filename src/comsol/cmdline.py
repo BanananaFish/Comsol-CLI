@@ -46,8 +46,8 @@ def train(saved, config, ckpt_path):
     trainer = Trainer(dataset, model, cfg, ckpt_path)
     try:
         trainer.train()
-    except KeyboardInterrupt:
-        trainer.save_ckpt(f"earlystop_best_{trainer.best_loss:.3f}", best=True)
+    except (KeyboardInterrupt, Trainer.EarlyStop):
+        trainer.save_ckpt(f"earlystop_best_{trainer.best_loss:.6f}", best=True)
 
 
 @main.command()

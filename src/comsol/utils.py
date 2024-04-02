@@ -76,6 +76,9 @@ class Config:
 
 
 class Trainer:
+    class EarlyStop(Exception):
+        pass
+
     def __init__(self, dataset, model, cfg: Config, ckpt_path):
         self.model = model
         self.cfg = cfg
@@ -87,6 +90,9 @@ class Trainer:
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)
         self.best_loss = float("inf")
         self.best_ckpt = model.state_dict()
+        self.stuck_count = 0
+        self.early_stop = cfg["train"]["early_stop"]
+
         self.ckpt_path = ckpt_path
 
         dataset_size = len(dataset)
@@ -108,40 +114,40 @@ class Trainer:
         self.model.train()
         self.model = self.to_cuda(self.model)
         for epoch in range(1, self.epoch + 1):
-            for i, (x, y) in track(
-                enumerate(self.train_loader),
-                total=len(self.train_loader),
-                description=f"Epoch {epoch}",
-                auto_refresh=False,
-            ):
+            for i, (x, y) in enumerate(self.train_loader):
                 x, y = self.to_cuda(x), self.to_cuda(y)
                 self.optimizer.zero_grad()
                 y_pred = self.model(x)
                 loss = self.loss(y_pred, y)
                 loss.backward()
                 self.optimizer.step()
-                if i % 10 == 0:
-                    logger.info(f"Epoch {epoch}, iter {i}, loss: {loss.item():.3f}")
+                if i % 25 == 0:
+                    logger.info(
+                        f"Epoch [{epoch}/{self.cfg['train']['epoch']}], iter {i}, loss: {loss.item():.6f}"
+                    )
             self.test()
         self.save_ckpt("lastest")
-        logger.info(f"Training finished, best loss: {self.best_loss:.3f}")
-        self.save_ckpt(f"best_loss_{self.best_loss:.3f}", best=True)
+        logger.info(f"Training finished, best loss: {self.best_loss:.6f}")
+        self.save_ckpt(f"best_loss_{self.best_loss:.6f}", best=True)
 
     def test(self):
         self.model.eval()
         losses = 0
         with torch.no_grad():
-            for x, y in track(
-                self.test_loader, description="Testing", auto_refresh=False
-            ):
+            for x, y in self.test_loader:
                 x, y = self.to_cuda(x), self.to_cuda(y)
                 y_pred = self.model(x)
                 losses += self.loss(y_pred, y)
         now_loss = losses / len(self.test_loader)
-        logger.info(f"Test loss: {now_loss:.3f}")
+        logger.info(f"Test loss: {now_loss:.6f}")
         if now_loss < self.best_loss:
+            self.stuck_count = 0
             self.best_loss = now_loss
             self.best_ckpt = self.model.state_dict()
+        else:
+            self.stuck_count += 1
+            if self.stuck_count >= self.early_stop:
+                raise self.EarlyStop
 
     def save_ckpt(self, name, best=False):
         ckpt_path = Path(self.ckpt_path) / f"{self.start_time:%Y.%m.%d_%H.%M.%S}"
@@ -283,6 +289,7 @@ class BandDataset(Dataset):
             with open(pkl, "rb") as f:
                 data: tuple[dict[str, str], np.ndarray] = pickle.load(f)
                 params, res = data
+                # 把第一个位置的参数归一化
                 params_list.append(self.to_rand(params))
                 res_arr_list.append(self.get_Bs(res, cfg["dataset"]["sampler"]))
 
