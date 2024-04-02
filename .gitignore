@@ -5,12 +5,13 @@
 /build
 /dist/**/*.exe
 /dist/**/*.spec
+config/cell_local.yaml
 .vscode
 _internal
 *.exe
 *.spec
 __pycache__
 play.ipynb
-ckpt/**
+**/*ckpt**/
 conda
 *.ps1

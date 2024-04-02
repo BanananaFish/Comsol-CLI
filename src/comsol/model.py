@@ -2,10 +2,17 @@ from torch import nn
 
 
 class MLP(nn.Module):
-    def __init__(self, int_nums: int = 3, out_nums: int = 10):
+    def __init__(self, cfg):
         super(MLP, self).__init__()
+        input_nums = len(cfg["cell"].values())
+        if cfg["dataset"]["sampler"] == "four_points":
+            out_nums = 4
+        elif cfg["dataset"]["sampler"] == "six_points":
+            out_nums = 6
+        else:
+            raise ValueError(f"Unknown sampler: {cfg['dataset']['sampler']}")
         self.model = nn.Sequential(
-            nn.Linear(int_nums, 2**3),
+            nn.Linear(input_nums, 2**3),
             nn.ReLU(),
             nn.Linear(2**3, 2**4),
             nn.ReLU(),

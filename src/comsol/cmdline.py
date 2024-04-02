@@ -41,23 +41,26 @@ def train(saved, config, ckpt_path):
     from comsol.utils import BandDataset, Config, Trainer
 
     cfg = Config(config)
-    dataset = BandDataset(saved)
-    model = MLP()
-    trainer = Trainer(dataset, model, cfg)
+    dataset = BandDataset(saved, cfg)
+    model = MLP(cfg)
+    trainer = Trainer(dataset, model, cfg, ckpt_path)
     try:
         trainer.train()
     except KeyboardInterrupt:
-        trainer.save_ckpt(f"earlystop_best_{trainer.best_loss:.3f}.pth", best=True)
+        trainer.save_ckpt(f"earlystop_best_{trainer.best_loss:.3f}", best=True)
 
 
 @main.command()
 @click.option("--ckpt", help="Path to the checkpoint file.", default="ckpt/latest.pth")
+@click.option("--config", help="Path to the config yaml.", default="config/cell.yaml")
 @click.option("--saved", help="Path to saved pickles.", default="export/saved")
-def ga(ckpt, saved):
+def ga(ckpt, config, saved):
     rprint(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
     from comsol.ga import fit
+    from comsol.utils import Config
 
-    fit(ckpt, saved)
+    cfg = Config(config)
+    fit(ckpt, saved, cfg)
 
 
 if __name__ == "__main__":

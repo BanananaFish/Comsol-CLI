@@ -4,14 +4,22 @@ import torch
 from loguru import logger
 
 from comsol.model import MLP
-from comsol.utils import BandDataset
+from comsol.utils import BandDataset, Config
 
 
-def fit(ckpt, pkl_path):
-    net = MLP()
+def fitness_warper(fitness_metric):
+    def fitness_func(ga_instance, solution, solution_idx):
+        fitness = fitness_metric(solution)
+        return fitness
+
+    return fitness_func
+
+
+def fit(ckpt, pkl_path, cfg: Config):
+    net = MLP(cfg)
     net.load_state_dict(torch.load(ckpt))
     net.eval()
-    dataset = BandDataset(pkl_path)
+    dataset = BandDataset(pkl_path, cfg)
 
     def fitness_func(ga_instance, solution, solution_idx):
         if any(solution < 0) or any(solution > 1):
@@ -19,7 +27,7 @@ def fit(ckpt, pkl_path):
         Bs: numpy.ndarray = (
             net(torch.tensor([solution]).float()).detach().numpy().flatten()
         )
-        return abs((Bs[1] + Bs[2]) / 2 - Bs[0])
+        return Bs[2] - Bs[0]
 
     fitness_function = fitness_func
 

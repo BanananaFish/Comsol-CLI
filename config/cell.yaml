@@ -19,3 +19,6 @@ train:
   epoch: 200
   batch_size: 16
   lr: 0.001
+
+dataset:
+  sampler: four_points # six_points, four_points

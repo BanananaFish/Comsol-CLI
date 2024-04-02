@@ -1,4 +1,3 @@
-import functools
 import pickle
 from dataclasses import dataclass
 from datetime import datetime
@@ -77,7 +76,7 @@ class Config:
 
 
 class Trainer:
-    def __init__(self, dataset, model, cfg: Config):
+    def __init__(self, dataset, model, cfg: Config, ckpt_path):
         self.model = model
         self.cfg = cfg
 
@@ -88,6 +87,7 @@ class Trainer:
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)
         self.best_loss = float("inf")
         self.best_ckpt = model.state_dict()
+        self.ckpt_path = ckpt_path
 
         dataset_size = len(dataset)
         train_size = int(dataset_size * 0.8)
@@ -144,7 +144,7 @@ class Trainer:
             self.best_ckpt = self.model.state_dict()
 
     def save_ckpt(self, name, best=False):
-        ckpt_path = Path(f"ckpt") / f"{self.start_time:%Y.%m.%d_%H.%M.%S}"
+        ckpt_path = Path(self.ckpt_path) / f"{self.start_time:%Y.%m.%d_%H.%M.%S}"
         ckpt_path.mkdir(parents=True, exist_ok=True)
 
         pth_path = ckpt_path / f"{name}.pth"
@@ -163,7 +163,73 @@ class BandDataset(Dataset):
     Bs_filter = set(("B0_1", "B0_11"))
 
     @staticmethod
-    def get_Bs(res_arr):
+    def get_Bs(res_arr, sampler):
+        if sampler == "four_points":
+            res = BandDataset.four_points_sampler(res_arr)
+        elif sampler == "six_points":
+            res = BandDataset.six_points_sampler(res_arr)
+        elif sampler == "mid":
+            res = BandDataset.mid_sampler(res_arr)
+        else:
+            raise ValueError(f"Sampler {sampler} not found")
+        return res
+
+    @staticmethod
+    def four_points_sampler(res_arr):
+        x_0 = 0
+        x_1 = res_arr[:, 0][len(res_arr) // 3]
+        res_arr_0 = res_arr[res_arr[:, 0] == x_0]
+        res_arr_1 = res_arr[res_arr[:, 0] == x_1]
+
+        # 按照y的值进行排序
+        res_arr_0 = res_arr_0[res_arr_0[:, 1].argsort()]
+        res_arr_1 = res_arr_1[res_arr_1[:, 1].argsort()]
+
+        # line0_0, line1_0, line0_1, line1_1
+        # 1 . 3
+        # . . .
+        # 0 . 2
+        res = np.array(
+            [res_arr_0[0, 1], res_arr_0[1, 1], res_arr_1[0, 1], res_arr_1[1, 1]]
+        )
+
+        assert len(res) == 4, f"res length is {len(res)}, not 4"
+        return res
+
+    @staticmethod
+    def six_points_sampler(res_arr):
+        x_0 = 0
+        x_1 = res_arr[:, 0][len(res_arr) // 3]
+        x_2 = res_arr[:, 0][(len(res_arr) * 2) // 3]
+        res_arr_0 = res_arr[res_arr[:, 0] == x_0]
+        res_arr_1 = res_arr[res_arr[:, 0] == x_1]
+        res_arr_2 = res_arr[res_arr[:, 0] == x_2]
+
+        # 按照y的值进行排序
+        res_arr_0 = res_arr_0[res_arr_0[:, 1].argsort()]
+        res_arr_1 = res_arr_1[res_arr_1[:, 1].argsort()]
+        res_arr_2 = res_arr_2[res_arr_2[:, 1].argsort()]
+
+        # line0_0, line1_0, line0_1, line1_1
+        # 1 . 3 . 5
+        # . . . . .
+        # 0 . 2 . 4
+        res = np.array(
+            [
+                res_arr_0[0, 1],
+                res_arr_0[1, 1],
+                res_arr_1[0, 1],
+                res_arr_1[1, 1],
+                res_arr_2[0, 1],
+                res_arr_2[1, 1],
+            ]
+        )
+
+        assert len(res) == 6, f"res length is {len(res)}, not 6"
+        return res
+
+    @staticmethod
+    def mid_sampler(res_arr):
         Bs: list[tuple[str, float]] = []
         x_mid = res_arr[:, 0][len(res_arr) // 2]
         res_arr_0 = res_arr[res_arr[:, 0] == 0]
@@ -206,7 +272,7 @@ class BandDataset(Dataset):
         res = res * (self.res_max - self.res_min) + self.res_min
         return params, res
 
-    def __init__(self, saved_path: PathLike | str):
+    def __init__(self, saved_path: PathLike | str, cfg: Config):
         self.params_mins = []
         self.params_maxs = []
 
@@ -218,7 +284,7 @@ class BandDataset(Dataset):
                 data: tuple[dict[str, str], np.ndarray] = pickle.load(f)
                 params, res = data
                 params_list.append(self.to_rand(params))
-                res_arr_list.append(self.get_Bs(res))
+                res_arr_list.append(self.get_Bs(res, cfg["dataset"]["sampler"]))
 
         # normalization
         params_arr = np.array(params_list)
@@ -241,21 +307,3 @@ class BandDataset(Dataset):
             torch.tensor(self.datas[0][idx]).float(),
             torch.tensor(self.datas[1][idx]).float(),
         )
-
-
-if __name__ == "__main__":
-    cfg = Config("config/cell2.yaml")
-    dataset = BandDataset("exports/saved")
-    # print(len(dataset))
-    # param, res = dataset[0]
-    # print(param, res)
-    # print(dataset.denormalization(param.numpy(), res.numpy()))
-    # bigs = dataset[0][1]
-    # smalls = dataset[0][0]
-    # for b in bigs:
-    #     print(torch.div(b, 1e10))
-    # for s in smalls:
-    #     print(torch.mul(s, 1e3))
-    model = MLP()
-    trainer = Trainer(dataset, model, cfg)
-    trainer.train()
