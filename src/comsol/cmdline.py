@@ -1,6 +1,8 @@
 import click
-from rich import print as rprint
-from rich.progress import track
+from rich.console import Console
+from rich.progress import Progress
+
+from comsol.console import console
 
 
 @click.group()
@@ -12,20 +14,28 @@ def main():
 @click.option("--model", help="Path to the model file.", default="models/cell.mph")
 @click.option("--config", help="Path to the config yaml.", default="config/cell.yaml")
 @click.option("--dump", help="Dump model file after study", is_flag=True)
-def run(model, config, dump):
-    rprint(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
+@click.option("--raw", help="Save raw exported data", is_flag=True)
+def run(model, config, raw, dump):
+    console.log(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
     from comsol.interface import Comsol
     from comsol.utils import Config
 
-    click.echo(f"Running model {model}, CFG: {config}, dump: {dump}")
+    console.log(f"Running model {model}, CFG: {config}, dump: {dump}, raw: {raw}")
     cfg = Config(config)
     cli = Comsol(model, *cfg.params)
-    for task in track(cfg.tasks, description="Running tasks..."):
-        cli.update(**task)
-        cli.study()
-        cli.save()
-        if dump:
-            cli.dump()
+    with Progress(console=console) as progress:
+        study_tast = progress.add_task("[cyan]Study", total=len(cfg.tasks))
+        for task in cfg.tasks:
+            # cli.update(**task)
+            # cli.study()
+            cli.study_count += 1
+            if raw:
+                cli.save_raw_data()
+            else:
+                cli.save()
+            if dump:
+                cli.dump()
+            progress.update(study_tast, advance=1)
 
 
 @main.command()
@@ -33,7 +43,7 @@ def run(model, config, dump):
 @click.option("--config", help="Path to the config yaml.", default="config/cell.yaml")
 @click.option("--ckpt_path", help="Path to the checkpoint file.", default="ckpt")
 def train(saved, config, ckpt_path):
-    rprint(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
+    console.log(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
     click.echo(
         f"Training model with saved {saved}, CFG: {config}, ckpt_path: {ckpt_path}"
     )
@@ -55,7 +65,7 @@ def train(saved, config, ckpt_path):
 @click.option("--config", help="Path to the config yaml.", default="config/cell.yaml")
 @click.option("--saved", help="Path to saved pickles.", default="export/saved")
 def ga(ckpt, config, saved):
-    rprint(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
+    console.log(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
     from comsol.ga import fit
     from comsol.utils import Config
 

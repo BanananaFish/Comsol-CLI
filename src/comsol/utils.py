@@ -11,10 +11,11 @@ import torch
 import yaml
 from loguru import logger
 from numpy.typing import ArrayLike
-from rich.progress import track
+from rich.progress import Progress
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
 
+from comsol.console import console
 from comsol.interface import Param
 from comsol.model import MLP
 
@@ -113,22 +114,29 @@ class Trainer:
     def train(self):
         self.model.train()
         self.model = self.to_cuda(self.model)
-        for epoch in range(1, self.epoch + 1):
-            for i, (x, y) in enumerate(self.train_loader):
-                x, y = self.to_cuda(x), self.to_cuda(y)
-                self.optimizer.zero_grad()
-                y_pred = self.model(x)
-                loss = self.loss(y_pred, y)
-                loss.backward()
-                self.optimizer.step()
-                if i % 25 == 0:
-                    logger.info(
-                        f"Epoch [{epoch}/{self.cfg['train']['epoch']}], iter {i}, loss: {loss.item():.6f}"
-                    )
-            self.test()
-        self.save_ckpt("lastest")
-        logger.info(f"Training finished, best loss: {self.best_loss:.6f}")
-        self.save_ckpt(f"best_loss_{self.best_loss:.6f}", best=True)
+        with Progress(console=console) as progress:
+            train_epoch_task = progress.add_task("[yellow]Training", total=self.epoch)
+            train_it_task = progress.add_task(
+                "[yellow3]Iteration", total=len(self.train_loader)
+            )
+            for epoch in range(1, self.epoch + 1):
+                progress.update(train_epoch_task, advance=1)
+                for i, (x, y) in enumerate(self.train_loader):
+                    progress.update(train_it_task, advance=1)
+                    x, y = self.to_cuda(x), self.to_cuda(y)
+                    self.optimizer.zero_grad()
+                    y_pred = self.model(x)
+                    loss = self.loss(y_pred, y)
+                    loss.backward()
+                    self.optimizer.step()
+                    if i % 50 == 0:
+                        console.log(
+                            f"Epoch [{epoch}/{self.cfg['train']['epoch']}], iter {i}, loss: {loss.item():.6f}"
+                        )
+                self.test()
+            self.save_ckpt("lastest")
+            console.log(f"Training finished, best loss: {self.best_loss:.6f}")
+            self.save_ckpt(f"best_loss_{self.best_loss:.6f}", best=True)
 
     def test(self):
         self.model.eval()
@@ -139,7 +147,7 @@ class Trainer:
                 y_pred = self.model(x)
                 losses += self.loss(y_pred, y)
         now_loss = losses / len(self.test_loader)
-        logger.info(f"Test loss: {now_loss:.6f}")
+        console.log(f"Test loss: {now_loss:.6f}")
         if now_loss < self.best_loss:
             self.stuck_count = 0
             self.best_loss = now_loss
@@ -157,12 +165,12 @@ class Trainer:
         cfg_path = ckpt_path / f"config.yaml"
         if not cfg_path.exists():
             self.cfg.dump(cfg_path)
-            logger.info(f"Dumped config to {cfg_path}")
+            console.log(f"Dumped config to {cfg_path}")
         if best:
             torch.save(self.best_ckpt, pth_path)
         else:
             torch.save(self.model.state_dict(), pth_path)
-        logger.info(f"Saved model to {pth_path}")
+        console.log(f"Saved model to {pth_path}")
 
 
 class BandDataset(Dataset):

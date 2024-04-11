@@ -3,12 +3,12 @@ import warnings
 import numpy
 import pygad
 import torch
-from loguru import logger
 
 from comsol.model import MLP
 from comsol.utils import BandDataset, Config
 
 warnings.filterwarnings("ignore")
+from comsol.console import console
 
 
 def fitness_warper(fitness_metric, net):
@@ -87,12 +87,12 @@ def fit(ckpt, pkl_path, cfg: Config):
     prediction = net(torch.tensor([solution]).float()).detach().numpy().flatten()
     solution, prediction = dataset.denormalization(solution, prediction)
     solution[0] = solution[0] * 360
-    # logger.info(f"Parameters of the best solution : {solution}")
+    # console.log(f"Parameters of the best solution : {solution}")
     params_dict = dict(zip(cfg["cell"].keys(), solution))
-    logger.info(f"BEST Parameters : {params_dict}")
-    logger.info(f"Predicted Band Structure : {prediction}")
-    logger.info(f"Fitness: {solution_fitness}")
-    logger.info(
+    console.log(f"BEST Parameters : {params_dict}")
+    console.log(f"Predicted Band Structure : {prediction}")
+    console.log(f"Fitness: {solution_fitness}")
+    console.log(
         f"Fitness (Denormal)= {solution_fitness * (dataset.res_max - dataset.res_min) + dataset.res_min:.5e}"
     )
 

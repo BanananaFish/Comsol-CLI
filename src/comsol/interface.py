@@ -5,9 +5,8 @@ from typing import List, TypeVar
 
 import mph
 import numpy as np
-from loguru import logger
 
-# from typing_extensions import Unpack
+from comsol.console import console
 
 T = TypeVar("T", int, float)
 
@@ -37,7 +36,7 @@ class Comsol:
         self.study_count = 0
 
     def parse_res(self):
-        self.cell.export("res")
+        self.cell.export()
         with open(self.export_file, "r") as file:
             lines = file.readlines()
         xy_values = [
@@ -54,7 +53,7 @@ class Comsol:
 
     @property
     def data(self):
-        self.cell.export("res")
+        self.cell.export()
         if Path(self.export_file).exists():
             arr = self.parse_res()
             arr_sorted = arr[arr[:, 0].argsort()]  # 按照x值对arr进行排序
@@ -82,27 +81,37 @@ class Comsol:
                 new_value = self.params_filter[key].filter(value)
                 self.cell.parameter(key, new_value)
         self.cell.mesh()
-        logger.info(self.params)
+        console.log(self.params)
 
     def study(self):
-        logger.info(f"# {self.study_count + 1} Solving...")
+        console.log(f"# {self.study_count + 1} Solving...")
         self.cell.solve()
-        self.cell.export("res")
+        self.cell.export()
         self.study_count += 1
 
     def save(self):
-        dest = Path("exports") / "saved" / f"res_{self.study_count:04d}.pkl"
+        self.cell.export()
+        dest = Path("exports") / "saved" / f"res_{self.study_count:05d}.pkl"
         dest.parent.mkdir(parents=True, exist_ok=True)
         if self.export_file.exists():
             with open(dest, "wb") as f:
                 pickle.dump((self.params, self.parse_res()), f)
-            logger.info(f"Results saved to {dest}")
+            console.log(f"Results saved to {dest}")
+
+    def save_raw_data(self):
+        dest_dir = Path("exports") / "raw" / f"study_{self.study_count:05d}"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        export_tasks = self.cell.exports()
+        for name in export_tasks:
+            csv = ".." / dest_dir / f"{name}.csv"
+            console.log(f"Results({name}) saved to {csv}")
+            self.cell.export(name, csv)
 
     def dump(self):
-        dest = Path("models") / "saved" / f"cell_{self.study_count:04d}.mph"
+        dest = Path("models") / "saved" / f"cell_{self.study_count:05d}.mph"
         dest.parent.mkdir(parents=True, exist_ok=True)
         self.cell.save(dest)
-        logger.info(f"Model dumped to {dest}")
+        console.log(f"Model dumped to {dest}")
 
 
 if __name__ == "__main__":
@@ -110,7 +119,7 @@ if __name__ == "__main__":
         "models/cell.mph", *[Param(name, 0, 3) for name in ["r", "rr", "p"]]
     )
 
-    logger.info(comsol.data)
+    console.log(comsol.data)
     comsol.update(r=0.0015)
     comsol.study()
     comsol.dump()

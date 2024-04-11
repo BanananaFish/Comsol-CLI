@@ -1,6 +1,8 @@
 /exports/**/*.txt
 /exports/**/*.pkl
+/exports/raw/*
 /models/**/*.mph
+/models/**/*.mph.lock
 /models/**/*.mph.bk
 /build
 /dist/**/*.exe
