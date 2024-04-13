@@ -32,9 +32,8 @@ def run(model, config, dump, raw, avg, sample):
     with Progress(console=console) as progress:
         study_tast = progress.add_task("[cyan]Study", total=len(cfg.tasks))
         for task in cfg.tasks:
-            # cli.update(**task)
-            # cli.study()
-            cli.study_count += 1
+            cli.update(**task)
+            cli.study()
             if raw or avg or sample:
                 if raw:
                     cli.save_raw_data()
