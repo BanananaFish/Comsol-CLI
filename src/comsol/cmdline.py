@@ -1,7 +1,6 @@
 import click
 from rich.console import Console
 from rich.progress import Progress
-from traitlets import default
 
 from comsol.console import console
 

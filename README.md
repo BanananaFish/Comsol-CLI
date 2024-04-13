@@ -10,7 +10,7 @@
 comsol_CLI.exe --help
 
 # 获取实验结果
-comsol_CLI.exe run --model <MPH path> --config <config yaml> [--dump]
+comsol_CLI.exe run --model <MPH path> --config <config yaml> [--dump / --raw / --sample 0.1]
 
 # 训练
 comsol_CLI.exe train --saved <pickles path> --config <config yaml> --ckpt_path <ckpt dir>
