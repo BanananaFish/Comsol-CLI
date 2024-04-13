@@ -1,6 +1,4 @@
-/exports/**/*.txt
-/exports/**/*.pkl
-/exports/raw/*
+/exports/*
 /models/**/*.mph
 /models/**/*.mph.lock
 /models/**/*.mph.bk

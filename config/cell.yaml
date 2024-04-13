@@ -1,24 +1,45 @@
 cell:
+  r:
+    init: 0.00000003
+    max: 0.00000032
+    min: 0.0000001
+    step: 0.00000003
+  hudu:
+    init: 0.001
+    max: 180
+    min: 5
+    step: 20
   zeta:
-    init: 0.0005
+    init: 0.001
     max: 180
     min: 0
-    step: 30
+    step: 20
+  g:
+    init: 0.001
+    max: 0.0000006
+    min: 0.0000001
+    step: 0.0000001
   rr:
     init: 0.001
-    max: 0.0045
-    min: 0.0035
-    step: 0.0005
-  rrr:
-    init: 0.001
-    max: 0.003
-    min: 0.001
-    step: 0.001
+    max: 0.00000003
+    min: 0.000000005
+    step: 0.000000005
+
+export:
+  # 导出的目录
+  dir: "exports/0"
+  # 哪些导出关键字要进行采样压缩，只要含有关键字的导出标签都会被计算，请写成列表形式，注意 - 和 " 之间有空格
+  sample_keys: 
+    - "flied"
+    # - "bd"
+    # - "export_foo"
+    # - "..."
 
 train:
-  epoch: 200
+  epoch: 500
   batch_size: 16
-  lr: 0.001
+  lr: 0.0001
+  early_stop: 30
 
 dataset:
-  sampler: four_points # six_points, four_points
+  sampler: six_points # six_points, four_points

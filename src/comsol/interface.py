@@ -1,12 +1,15 @@
 import pickle
+import shutil
 from os import PathLike
 from pathlib import Path
 from typing import List, TypeVar
 
 import mph
 import numpy as np
+from typing_extensions import deprecated
 
 from comsol.console import console
+from comsol.csv import compress_save, grid_avg, sample_cood
 
 T = TypeVar("T", int, float)
 
@@ -25,55 +28,59 @@ class Param:
 
 
 class Comsol:
-    def __init__(self, model: PathLike | str, *optim_params: Param) -> None:
+    def __init__(
+        self, model: PathLike | str, export_dir: PathLike | str, *optim_params: Param
+    ) -> None:
         self.client: mph.Client = mph.start()
         self.cell: mph.Model = self.client.load(model)
 
-        self.export_file = Path("exports") / "res.txt"
+        self.export_dir = Path(export_dir)
 
         self.params_filter = {param.name: param for param in optim_params}
 
         self.study_count = 0
 
+    @deprecated("parse_res is deprecated")
     def parse_res(self):
         self.cell.export()
-        with open(self.export_file, "r") as file:
-            lines = file.readlines()
-        xy_values = [
-            list(map(float, ",".join(line.split()).split(",")))
-            for line in lines
-            if not line.startswith("%")
-        ]
-        arr = np.array(xy_values)
-        return arr
+        # with open(self.export_file, "r") as file:
+        #     lines = file.readlines()
+        # xy_values = [
+        #     list(map(float, ",".join(line.split()).split(",")))
+        #     for line in lines
+        #     if not line.startswith("%")
+        # ]
+        # arr = np.array(xy_values)
+        # return arr
 
     @property
     def params(self):
         return {param: self.cell.parameter(param) for param in self.params_filter}
 
     @property
+    @deprecated("data property is deprecated")
     def data(self):
         self.cell.export()
-        if Path(self.export_file).exists():
-            arr = self.parse_res()
-            arr_sorted = arr[arr[:, 0].argsort()]  # 按照x值对arr进行排序
+        # if Path(self.export_file).exists():
+        #     arr = self.parse_res()
+        #     arr_sorted = arr[arr[:, 0].argsort()]  # 按照x值对arr进行排序
 
-            min_values: dict[
-                float, List[float]
-            ] = {}  # 初始化一个空的字典来存储每个x值的最小的两个数
+        #     min_values: dict[
+        #         float, List[float]
+        #     ] = {}  # 初始化一个空的字典来存储每个x值的最小的两个数
 
-            for x, y in arr_sorted:
-                if x not in min_values:
-                    min_values[x] = [y]
-                else:
-                    if len(min_values[x]) < 2:
-                        min_values[x].append(y)
-                    else:
-                        max_value = max(min_values[x])
-                        if y < max_value:
-                            min_values[x].remove(max_value)
-                            min_values[x].append(y)
-            return min_values
+        #     for x, y in arr_sorted:
+        #         if x not in min_values:
+        #             min_values[x] = [y]
+        #         else:
+        #             if len(min_values[x]) < 2:
+        #                 min_values[x].append(y)
+        #             else:
+        #                 max_value = max(min_values[x])
+        #                 if y < max_value:
+        #                     min_values[x].remove(max_value)
+        #                     min_values[x].append(y)
+        #     return min_values
 
     def update(self, **kwargs):
         for key, value in kwargs.items():
@@ -86,20 +93,26 @@ class Comsol:
     def study(self):
         console.log(f"# {self.study_count + 1} Solving...")
         self.cell.solve()
-        self.cell.export()
         self.study_count += 1
 
-    def save(self):
+    def save(self, raw=False, avg=True):
+        if raw:
+            return self.save_raw_data()
+        elif avg:
+            return self.save_avg_data()
+        console.log("[red]No save option selected")
+
+    @deprecated("save_pkl is deprecated, use save_raw_data / save_avg_data instead")
+    def save_pkl(self):
         self.cell.export()
-        dest = Path("exports") / "saved" / f"res_{self.study_count:05d}.pkl"
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        if self.export_file.exists():
-            with open(dest, "wb") as f:
-                pickle.dump((self.params, self.parse_res()), f)
-            console.log(f"Results saved to {dest}")
+        dest_dir = self.export_dir / "raw" / f"study_{self.study_count:05d}"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        with open(dest_dir / f"res_{self.study_count:05d}.pkl", "wb") as f:
+            pickle.dump((self.params, self.parse_res()), f)
+        console.log(f"Results saved to {dest_dir}")
 
     def save_raw_data(self):
-        dest_dir = Path("exports") / "raw" / f"study_{self.study_count:05d}"
+        dest_dir = self.export_dir / "raw" / f"study_{self.study_count:05d}"
         dest_dir.mkdir(parents=True, exist_ok=True)
         export_tasks = self.cell.exports()
         for name in export_tasks:
@@ -107,19 +120,55 @@ class Comsol:
             console.log(f"Results({name}) saved to {csv}")
             self.cell.export(name, csv)
 
+    def save_avg_data(self, avg_list: List[str] = ["flied"]):
+        raise NotImplementedError("save_avg_data is not implemented")
+        dest_dir = self.export_dir / "raw" / f"study_{self.study_count:05d}"
+        tmp_dir = self.export_dir / "avg" / "tmp"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        export_tasks = self.cell.exports()
+        for task in export_tasks:
+            csv_name = f"{task}.csv"
+            self.cell.export(task, (tmp_dir / csv_name).absolute())
+            if task in avg_list:
+                grid_avg(tmp_dir / csv_name)
+                console.log(f"Results({task}) cal grid avg")
+            shutil.copy(tmp_dir / csv_name, dest_dir / csv_name)
+            console.log(f"Results({task}) saved to {dest_dir}")
+
+    def save_sampled_data(
+        self, frac: float, sample_keys: List[str], console=console, progress=None
+    ):
+        dest_dir = self.export_dir / "sampled" / f"study_{self.study_count:05d}"
+        tmp_dir = self.export_dir / "tmp"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        export_tasks = self.cell.exports()
+        if progress:
+            sampled_task = progress.add_task(
+                f"[light_cyan3]Sampled", total=len(export_tasks)
+            )
+        for task in export_tasks:
+            csv_name = f"{task}.csv"
+            # 导出的工作路径使用的是 cell 模型的路径，所以目标需要使用绝对路径
+            self.cell.export(task, (tmp_dir / csv_name).absolute())
+            if any(sample_key in task for sample_key in sample_keys):
+                arr = sample_cood(tmp_dir / csv_name)
+                compress_save(arr, dest_dir / f"{task}.npz")
+                console.log(f"Results({task}) sampled! frac: {frac:.3f}")
+            else:
+                shutil.copy(tmp_dir / csv_name, dest_dir / csv_name)
+                console.log(f"Results({task}) skip sample, saved to {dest_dir}")
+
+            if progress:
+                progress.update(sampled_task, advance=1)
+
+        if progress:
+            progress.stop_task(sampled_task)
+            progress.remove_task(sampled_task)
+
     def dump(self):
         dest = Path("models") / "saved" / f"cell_{self.study_count:05d}.mph"
         dest.parent.mkdir(parents=True, exist_ok=True)
         self.cell.save(dest)
         console.log(f"Model dumped to {dest}")
-
-
-if __name__ == "__main__":
-    comsol = Comsol(
-        "models/cell.mph", *[Param(name, 0, 3) for name in ["r", "rr", "p"]]
-    )
-
-    console.log(comsol.data)
-    comsol.update(r=0.0015)
-    comsol.study()
-    comsol.dump()

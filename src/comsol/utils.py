@@ -22,7 +22,7 @@ from comsol.model import MLP
 
 class Config:
     def __init__(self, config_file):
-        with open(config_file, "r") as f:
+        with open(config_file, "r", encoding="utf-8") as f:
             self.config = yaml.load(f, Loader=yaml.FullLoader)
 
     def __getitem__(self, key):

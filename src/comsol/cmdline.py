@@ -1,6 +1,7 @@
 import click
 from rich.console import Console
 from rich.progress import Progress
+from traitlets import default
 
 from comsol.console import console
 
@@ -15,24 +16,38 @@ def main():
 @click.option("--config", help="Path to the config yaml.", default="config/cell.yaml")
 @click.option("--dump", help="Dump model file after study", is_flag=True)
 @click.option("--raw", help="Save raw exported data", is_flag=True)
-def run(model, config, raw, dump):
+@click.option("--avg", help="Save grid avg exported data, infer in cfg", is_flag=True)
+@click.option("--sample", help="sampled frac", default=0.1)
+def run(model, config, dump, raw, avg, sample):
     console.log(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
     from comsol.interface import Comsol
     from comsol.utils import Config
 
-    console.log(f"Running model {model}, CFG: {config}, dump: {dump}, raw: {raw}")
+    console.log(
+        f"Running model {model}, CFG: {config}, dump: {dump}, raw: {raw}, sample: {sample}, avg: {avg}"
+    )
     cfg = Config(config)
-    cli = Comsol(model, *cfg.params)
+    cli = Comsol(model, cfg["export"]["dir"], *cfg.params)
+
     with Progress(console=console) as progress:
         study_tast = progress.add_task("[cyan]Study", total=len(cfg.tasks))
         for task in cfg.tasks:
             # cli.update(**task)
             # cli.study()
             cli.study_count += 1
-            if raw:
-                cli.save_raw_data()
+            if raw or avg or sample:
+                if raw:
+                    cli.save_raw_data()
+                if avg:
+                    cli.save_avg_data(cfg["export"]["grid_avg"])
+                if sample:
+                    cli.save_sampled_data(
+                        frac=sample,
+                        sample_keys=cfg["export"]["sample_keys"],
+                        progress=progress,
+                    )
             else:
-                cli.save()
+                console.log("[red]No save option selected")
             if dump:
                 cli.dump()
             progress.update(study_tast, advance=1)
