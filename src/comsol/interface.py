@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 import pickle
 import shutil
+from copy import deepcopy
 from os import PathLike
 from pathlib import Path
 from typing import List, TypeVar
 
 import mph
 import numpy as np
+import yaml
 from typing_extensions import deprecated
 
 from comsol.console import console
@@ -87,20 +91,21 @@ class Comsol:
             if key in self.params_filter:
                 new_value = self.params_filter[key].filter(value)
                 self.cell.parameter(key, new_value)
+        console.log(f"curr_params: {self.params}")
         self.cell.mesh()
-        console.log(self.params)
 
     def study(self):
         console.log(f"# {self.study_count + 1} Solving...")
         self.cell.solve()
         self.study_count += 1
 
-    def save(self, raw=False, avg=True):
-        if raw:
-            return self.save_raw_data()
-        elif avg:
-            return self.save_avg_data()
-        console.log("[red]No save option selected")
+    def save_cfg(self, cfg, curr_task):
+        cfg_ = deepcopy(cfg)
+        dest_dir = self.export_dir / "cfg" / f"study_{self.study_count:05d}"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        cfg_.config["curr_task"] = {k: float(v) for k, v in curr_task.items()}
+        cfg_.dump(dest_dir / f"cfg_{self.study_count:05d}.yaml")
+        console.log(f"Config saved to {dest_dir}")
 
     @deprecated("save_pkl is deprecated, use save_raw_data / save_avg_data instead")
     def save_pkl(self):
@@ -146,7 +151,7 @@ class Comsol:
         export_tasks = self.cell.exports()
         if progress:
             sampled_task = progress.add_task(
-                f"[light_cyan3]Sampled", total=len(export_tasks)
+                f"[light_cyan3]Sample", total=len(export_tasks)
             )
         for task in export_tasks:
             csv_name = f"{task}.csv"
@@ -155,13 +160,17 @@ class Comsol:
             if any(sample_key in task for sample_key in sample_keys):
                 arr = sample_cood(tmp_dir / csv_name)
                 compress_save(arr, dest_dir / f"{task}.npz")
-                console.log(f"Results({task}) sampled! frac: {frac:.3f}")
+                # console.log(f"Results({task}) sampled! frac: {frac:.3f}")
             else:
                 shutil.copy(tmp_dir / csv_name, dest_dir / csv_name)
-                console.log(f"Results({task}) skip sample, saved to {dest_dir}")
+                # console.log(f"Results({task}) skip sample, saved to {dest_dir}")
 
             if progress:
-                progress.update(sampled_task, advance=1)
+                progress.update(
+                    sampled_task,
+                    advance=1,
+                    description=f"[light_cyan3]Sample: {task}",
+                )
 
         if progress:
             progress.stop_task(sampled_task)

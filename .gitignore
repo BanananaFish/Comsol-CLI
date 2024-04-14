@@ -6,6 +6,7 @@
 /dist/**/*.exe
 /dist/**/*.spec
 config/cell_local.yaml
+config/cell_test.yaml
 .vscode
 _internal
 *.exe
