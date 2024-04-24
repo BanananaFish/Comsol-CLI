@@ -76,19 +76,20 @@ def run(model, config, dump, raw, avg, sample):
 
 
 @main.command()
-@click.option("--saved", help="Path to saved pickles.", default="export/saved")
+@click.option("--exps", help="Path to saved exps.", default="exp1")
 @click.option("--config", help="Path to the config yaml.", default="config/cell.yaml")
 @click.option("--ckpt_path", help="Path to the checkpoint file.", default="ckpt")
-def train(saved, config, ckpt_path):
+def train(exps, config, ckpt_path):
     console.log(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
     click.echo(
-        f"Training model with saved {saved}, CFG: {config}, ckpt_path: {ckpt_path}"
+        f"Training model with saved {exps}, CFG: {config}, ckpt_path: {ckpt_path}"
     )
     from comsol.model import MLP
-    from comsol.utils import BandDataset, Config, Trainer
+    from comsol.utils import Config, Trainer
+    from comsol.datasets import FieldDataset
 
     cfg = Config(config)
-    dataset = BandDataset(saved, cfg)
+    dataset = FieldDataset(exps, cfg)
     model = MLP(cfg)
     trainer = Trainer(dataset, model, cfg, ckpt_path)
     try:

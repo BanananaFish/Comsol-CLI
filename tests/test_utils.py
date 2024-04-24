@@ -10,10 +10,8 @@ from click.testing import CliRunner
 from comsol.cmdline import main
 from comsol.utils import BandDataset
 
-# from src.utils import BandDataset
 
-
-class BandDatasetTests(unittest.TestCase):
+class FieldDatasetTest(unittest.TestCase):
     def setUp(self):
         # Create a sample dataset for testing
         self.params = [

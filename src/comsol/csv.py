@@ -4,6 +4,16 @@ import numpy as np
 import pandas as pd
 
 
+def csv_without_header(csv_path: Path):
+    with open(csv_path, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+    
+    last_comment_line = 0
+    for i, line in enumerate(lines, start=1):
+        if line.startswith("%"):
+            last_comment_line = i
+    return lines[last_comment_line:]
+
 def sample_cood(csv_path: Path, frac: float = 0.1):
     # 读取整个文件
     with open(csv_path, "r", encoding="utf-8") as f:

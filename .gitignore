@@ -16,3 +16,6 @@ play.ipynb
 **/*ckpt**/
 conda
 *.ps1
+/exp1
+sampled.zip
+/field_ckpt

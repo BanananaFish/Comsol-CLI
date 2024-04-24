@@ -9,6 +9,8 @@ class MLP(nn.Module):
             out_nums = 4
         elif cfg["dataset"]["sampler"] == "six_points":
             out_nums = 6
+        elif cfg["dataset"]["sampler"] == "field":
+            out_nums = 2
         else:
             raise ValueError(f"Unknown sampler: {cfg['dataset']['sampler']}")
         self.model = nn.Sequential(

@@ -100,8 +100,8 @@ class Trainer:
         train_size = int(dataset_size * 0.8)
         test_size = dataset_size - train_size
         train_data, test_data = random_split(dataset, (train_size, test_size))
-        self.train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
-        self.test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
+        self.train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=12)
+        self.test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True, num_workers=12)
 
         self.start_time = datetime.now()
 
