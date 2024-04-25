@@ -5,7 +5,8 @@ import pygad
 import torch
 
 from comsol.model import MLP
-from comsol.utils import BandDataset, Config
+from comsol.utils import Config
+from comsol.datasets import FieldDataset
 
 warnings.filterwarnings("ignore")
 from comsol.console import console
@@ -33,22 +34,31 @@ def max_min_distance_six(solution, net):
     # 1 . 3 . 5
     # . . . . .
     # 0 . 2 . 4
-    if any(solution < 0) or any(solution > 1):
+    if any(solution < 0) or any(solution > 1.5):
         return -1000
     Bs: numpy.ndarray = net(torch.tensor([solution]).float()).detach().numpy().flatten()
     return min(abs(Bs[3] - Bs[2]), abs(Bs[5] - Bs[4]))
+
+
+def min_mse_and_central_field(solution, net):
+    if any(solution < 0):
+        return -1000
+    mse, grater_mean = net(torch.tensor([solution]).float()).detach().numpy().flatten()
+    return mse + grater_mean
 
 
 def fit(ckpt, pkl_path, cfg: Config):
     net = MLP(cfg)
     net.load_state_dict(torch.load(ckpt))
     net.eval()
-    dataset = BandDataset(pkl_path, cfg)
+    dataset = FieldDataset(pkl_path, cfg)
 
     if cfg["dataset"]["sampler"] == "four_points":
         fitness_func = fitness_warper(max_min_distance_four, net)
     elif cfg["dataset"]["sampler"] == "six_points":
         fitness_func = fitness_warper(max_min_distance_six, net)
+    elif cfg["dataset"]["sampler"] == "field":
+        fitness_func = fitness_warper(min_mse_and_central_field, net)
     else:
         raise ValueError(f"Unknown sampler: {cfg['dataset']['sampler']}")
 
@@ -85,16 +95,13 @@ def fit(ckpt, pkl_path, cfg: Config):
     solution, solution_fitness, solution_idx = ga_instance.best_solution()
 
     prediction = net(torch.tensor([solution]).float()).detach().numpy().flatten()
-    solution, prediction = dataset.denormalization(solution, prediction)
-    solution[0] = solution[0] * 360
-    # console.log(f"Parameters of the best solution : {solution}")
+    mse, grater_mean = prediction
     params_dict = dict(zip(cfg["cell"].keys(), solution))
-    console.log(f"BEST Parameters : {params_dict}")
-    console.log(f"Predicted Band Structure : {prediction}")
+    solution, mse = dataset.denorm_params(params_dict), dataset.denorm_mse(mse)
+    # console.log(f"Parameters of the best solution : {solution}")
+    console.log(f"BEST Parameters : {solution}")
+    console.log(f"Predicted Band Outputs : {mse=}, {grater_mean=}")
     console.log(f"Fitness: {solution_fitness}")
-    console.log(
-        f"Fitness (Denormal)= {solution_fitness * (dataset.res_max - dataset.res_min) + dataset.res_min:.5e}"
-    )
 
 
 # TODO: auto evaluate
