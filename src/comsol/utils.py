@@ -1,23 +1,18 @@
 import pickle
-from dataclasses import dataclass
 from datetime import datetime
 from itertools import product
 from os import PathLike
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import torch
 import yaml
-from loguru import logger
-from numpy.typing import ArrayLike
 from rich.progress import Progress
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
 
 from comsol.console import console
 from comsol.interface import Param
-from comsol.model import MLP
 
 
 class Config:
@@ -100,8 +95,8 @@ class Trainer:
         train_size = int(dataset_size * 0.8)
         test_size = dataset_size - train_size
         train_data, test_data = random_split(dataset, (train_size, test_size))
-        self.train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=12)
-        self.test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True, num_workers=12)
+        self.train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=6)
+        self.test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True, num_workers=6)
 
         self.start_time = datetime.now()
 

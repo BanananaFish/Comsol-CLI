@@ -34,14 +34,14 @@ def max_min_distance_six(solution, net):
     # 1 . 3 . 5
     # . . . . .
     # 0 . 2 . 4
-    if any(solution < 0) or any(solution > 1.5):
+    if any(solution < 0) or any(solution > 1):
         return -1000
     Bs: numpy.ndarray = net(torch.tensor([solution]).float()).detach().numpy().flatten()
     return min(abs(Bs[3] - Bs[2]), abs(Bs[5] - Bs[4]))
 
 
 def min_mse_and_central_field(solution, net):
-    if any(solution < 0):
+    if any(solution < 0) or any(solution > 10):
         return -1000
     mse, grater_mean = net(torch.tensor([solution]).float()).detach().numpy().flatten()
     return mse + grater_mean
@@ -68,7 +68,7 @@ def fit(ckpt, pkl_path, cfg: Config):
     sol_per_pop = 30
     num_genes = len(cfg["cell"].values())
     init_range_low = 0
-    init_range_high = 1
+    init_range_high = 5
 
     parent_selection_type = "sss"
     keep_parents = 1
@@ -99,6 +99,7 @@ def fit(ckpt, pkl_path, cfg: Config):
     params_dict = dict(zip(cfg["cell"].keys(), solution))
     solution, mse = dataset.denorm_params(params_dict), dataset.denorm_mse(mse)
     # console.log(f"Parameters of the best solution : {solution}")
+    console.log(f"BEST Parameters (not denorm) : {params_dict}")
     console.log(f"BEST Parameters : {solution}")
     console.log(f"Predicted Band Outputs : {mse=}, {grater_mean=}")
     console.log(f"Fitness: {solution_fitness}")

@@ -13,7 +13,7 @@ import yaml
 from typing_extensions import deprecated
 
 from comsol.console import console
-from comsol.csv import compress_save, grid_avg, sample_cood
+from comsol.csvparse import compress_save, grid_avg, sample_cood
 
 T = TypeVar("T", int, float)
 

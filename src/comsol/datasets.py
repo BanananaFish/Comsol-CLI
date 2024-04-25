@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 from comsol.utils import Config
-from comsol.csv import csv_without_header
+from comsol.csvparse import csv_without_header
 
 class FieldDataset(Dataset):
     def __init__(self, exps: str, cfg: Config):
