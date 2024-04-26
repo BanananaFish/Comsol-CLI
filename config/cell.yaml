@@ -41,6 +41,9 @@ train:
   early_stop: 30
   threshold: 0.6
   mse_norm: 1e26
+  loss_weight: 
+    - 1
+    - 1
   params_norm_dict:
     r: 1e-07
     hudu: 360

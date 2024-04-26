@@ -41,7 +41,11 @@ def max_min_distance_six(solution, net):
 
 
 def min_mse_and_central_field(solution, net):
-    if any(solution < 0) or any(solution > 10):
+    if any(solution < 0):
+        return -1000
+    if solution[1] > 0.5 or solution[2] > 0.5:
+        return -1000
+    if any(solution > 1):
         return -1000
     mse, grater_mean = net(torch.tensor([solution]).float()).detach().numpy().flatten()
     return mse + grater_mean
@@ -68,7 +72,7 @@ def fit(ckpt, pkl_path, cfg: Config):
     sol_per_pop = 30
     num_genes = len(cfg["cell"].values())
     init_range_low = 0
-    init_range_high = 5
+    init_range_high = 2
 
     parent_selection_type = "sss"
     keep_parents = 1

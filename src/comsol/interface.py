@@ -151,7 +151,7 @@ class Comsol:
         export_tasks = self.cell.exports()
         if progress:
             sampled_task = progress.add_task(
-                f"[light_cyan3]Sample", total=len(export_tasks)
+                "[light_cyan3]Sample", total=len(export_tasks)
             )
         for task in export_tasks:
             csv_name = f"{task}.csv"
@@ -171,6 +171,7 @@ class Comsol:
                     advance=1,
                     description=f"[light_cyan3]Sample: {task}",
                 )
+        console.log(f"Sampled saved to {dest_dir}")
 
         if progress:
             progress.stop_task(sampled_task)

@@ -121,6 +121,7 @@ class Trainer:
                     x, y = self.to_cuda(x), self.to_cuda(y)
                     self.optimizer.zero_grad()
                     y_pred = self.model(x)
+                    y_pred = torch.mul(y_pred, torch.tensor(self.cfg["train"]["loss_weight"]))
                     loss = self.loss(y_pred, y)
                     loss.backward()
                     self.optimizer.step()
@@ -128,6 +129,8 @@ class Trainer:
                         console.log(
                             f"Epoch [{epoch}/{self.cfg['train']['epoch']}], iter {i}, loss: {loss.item():.6f}"
                         )
+                progress.stop_task(train_it_task)
+                progress.remove_task(train_it_task)
                 self.test()
             self.save_ckpt("lastest")
             console.log(f"Training finished, best loss: {self.best_loss:.6f}")

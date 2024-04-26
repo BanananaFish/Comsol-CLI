@@ -40,8 +40,8 @@ def run(model, config, dump, raw, avg, sample):
         for task in cfg.tasks:
             try:
                 cli.update(**task)
-                cli.save_cfg(cfg, task)
                 cli.study()
+                cli.save_cfg(cfg, task)
                 if raw or avg or sample:
                     if raw:
                         cli.save_raw_data()
