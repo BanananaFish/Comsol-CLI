@@ -121,7 +121,7 @@ class Trainer:
                     x, y = self.to_cuda(x), self.to_cuda(y)
                     self.optimizer.zero_grad()
                     y_pred = self.model(x)
-                    y_pred = torch.mul(y_pred, torch.tensor(self.cfg["train"]["loss_weight"]))
+                    y_pred = torch.mul(y_pred, torch.tensor(self.cfg["train"]["loss_weight"]).cuda())
                     loss = self.loss(y_pred, y)
                     loss.backward()
                     self.optimizer.step()
