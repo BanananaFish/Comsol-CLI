@@ -4,6 +4,8 @@ from rich.console import Console
 from rich.progress import MofNCompleteColumn, Progress, SpinnerColumn
 
 from comsol.console import console
+from rich.traceback import install
+install(show_locals=True)
 
 
 @click.group()

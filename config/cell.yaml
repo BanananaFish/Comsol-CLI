@@ -1,9 +1,9 @@
 cell:
   r:
     init: 0.00000003
-    max: 0.00000032
-    min: 0.0000001
-    step: 0.00000003
+    max: 32e-8
+    min: 1e-7
+    step: 1e-8
   hudu:
     init: 0.001
     max: 180
@@ -16,14 +16,14 @@ cell:
     step: 20
   g:
     init: 0.001
-    max: 0.0000006
-    min: 0.0000001
-    step: 0.0000001
+    max: 6e-7
+    min: 1e-7
+    step: 1e-7
   rr:
     init: 0.001
-    max: 0.00000003
-    min: 0.000000005
-    step: 0.000000005
+    max: 3e
+    min: 5e-9
+    step: 5e-9
 
 export:
   dir: "exports/0"
@@ -35,7 +35,7 @@ export:
     # - "..."
 
 train:
-  epoch: 500
+  epoch: 200
   batch_size: 16
   lr: 0.0001
   early_stop: 30
@@ -45,11 +45,11 @@ train:
     - 1
     - 1
   params_norm_dict:
-    r: 1e-07
-    hudu: 360
-    zeta: 360
-    g: 1e-7
-    rr: 1e-08
+    r: 32e-8
+    hudu: 180
+    zeta: 180
+    g: 6e-7
+    rr: 3e-8
 
 dataset:
   sampler: field # six_points, four_points, field

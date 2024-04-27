@@ -42,16 +42,10 @@ class FieldDataset(Dataset):
         ava_points = self.central_points(self.exp_datas[idx])
         params = Config(self.param_datas[idx])["curr_task"]
         bds = [self.get_bd_data_by_x(x, k) for x, k, _ in ava_points]
-        bd_mean = np.mean([bd[1] for bd in bds])
-        mse = np.mean([(bd[1] - bd_mean) ** 2 for bd in bds])
-        grater_mean = np.mean([grater for _, _, grater in ava_points])
-        # return dict(
-        #     ava_points=ava_points,
-        #     bds = bds,
-        #     mse = mse / self.mse_regress,
-        #     grater_mean = grater_mean,
-        #     params=params,
-        # )
+        selected_points = self.select_min_error_points(ava_points, bds)
+        bd_mean = np.mean([p[3] for p in selected_points])
+        mse = np.mean([(p[3] - bd_mean) ** 2 for p in selected_points])
+        grater_mean = np.mean([p[2] for p in selected_points])
         return (
             torch.tensor(list(self.norm_params(params).values()), dtype=torch.float32),
             torch.tensor([self.norm_mse(mse), grater_mean], dtype=torch.float32)
@@ -90,6 +84,21 @@ class FieldDataset(Dataset):
             if grater:
                 points.append((x, k, grater))
         return points
+    
+    def select_min_error_points(self, points, bds) -> list[tuple[int, int, float, float]]:
+        bd_mean = np.mean([bd[1] for bd in bds])
+        point_per_x = {}
+        for point, bd in zip(points, bds):
+            x, k, grater = point
+            curr_point = point_per_x.get(x, None)
+            if curr_point is None:
+                point_per_x[x] = (x, k, grater, bd[1])
+            else:
+                error = (bd[1] - bd_mean) ** 2
+                curr_error = (curr_point[3] - bd_mean) ** 2
+                if error < curr_error:
+                    point_per_x[x] = (x, k, grater, bd[1])
+        return [(x, k, grater, bd) for x, k, grater, bd in point_per_x.values()]
     
     def get_bd_data_by_x(self, x, k):
         bd_lines = csv_without_header(self.bd_datas[x])

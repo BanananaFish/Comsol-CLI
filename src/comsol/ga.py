@@ -41,14 +41,8 @@ def max_min_distance_six(solution, net):
 
 
 def min_mse_and_central_field(solution, net):
-    if any(solution < 0):
-        return -1000
-    if solution[1] > 0.5 or solution[2] > 0.5:
-        return -1000
-    if any(solution > 1):
-        return -1000
     mse, grater_mean = net(torch.tensor([solution]).float()).detach().numpy().flatten()
-    return mse + grater_mean
+    return -mse, grater_mean
 
 
 def fit(ckpt, pkl_path, cfg: Config):
@@ -94,6 +88,7 @@ def fit(ckpt, pkl_path, cfg: Config):
         crossover_type=crossover_type,
         mutation_type=mutation_type,
         mutation_probability=mutation_probability,
+        gene_space=dict(low=0, high=1),
     )
     ga_instance.run()
     solution, solution_fitness, solution_idx = ga_instance.best_solution()

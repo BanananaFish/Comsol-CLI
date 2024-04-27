@@ -111,11 +111,11 @@ class Trainer:
         self.model = self.to_cuda(self.model)
         with Progress(console=console) as progress:
             train_epoch_task = progress.add_task("[yellow]Training", total=self.epoch)
-            train_it_task = progress.add_task(
-                "[yellow3]Iteration", total=len(self.train_loader)
-            )
             for epoch in range(1, self.epoch + 1):
                 progress.update(train_epoch_task, advance=1)
+                train_it_task = progress.add_task(
+                    "[yellow3]Iteration", total=len(self.train_loader)
+                )
                 for i, (x, y) in enumerate(self.train_loader):
                     progress.update(train_it_task, advance=1)
                     x, y = self.to_cuda(x), self.to_cuda(y)
