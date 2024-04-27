@@ -39,6 +39,7 @@ class FieldDataset(Dataset):
         Returns:
             tuple: (params, (mse, grater_mean))
         """
+        assert int(self.param_datas[idx].parent.stem.split("_")[-1]) == int(self.exp_datas[idx].stem.split("_")[-1]) - 1
         ava_points = self.central_points(self.exp_datas[idx])
         params = Config(self.param_datas[idx])["curr_task"]
         bds = [self.get_bd_data_by_x(x, k) for x, k, _ in ava_points]
@@ -82,7 +83,8 @@ class FieldDataset(Dataset):
             fields = np.load(field)["arr_0"]
             grater = self.central(fields)
             if grater:
-                points.append((x, k, grater))
+                # field 0-1, field 0-2 ..., so k needs to -1
+                points.append((x, k - 1, grater))
         return points
     
     def select_min_error_points(self, points, bds) -> list[tuple[int, int, float, float]]:

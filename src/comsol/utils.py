@@ -160,7 +160,7 @@ class Trainer:
         ckpt_path.mkdir(parents=True, exist_ok=True)
 
         pth_path = ckpt_path / f"{name}.pth"
-        cfg_path = ckpt_path / f"config.yaml"
+        cfg_path = ckpt_path / "config.yaml"
         if not cfg_path.exists():
             self.cfg.dump(cfg_path)
             console.log(f"Dumped config to {cfg_path}")
