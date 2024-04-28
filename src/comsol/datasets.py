@@ -1,4 +1,5 @@
 from pathlib import Path
+import random
 from torch.utils.data import Dataset
 import numpy as np
 import torch
@@ -44,12 +45,13 @@ class FieldDataset(Dataset):
         params = Config(self.param_datas[idx])["curr_task"]
         bds = [self.get_bd_data_by_x(x, k) for x, k, _ in ava_points]
         selected_points = self.select_min_error_points(ava_points, bds)
-        if selected_points:
-            bd_mean = np.mean([p[3] for p in selected_points])
-            mse = np.mean([(p[3] - bd_mean) ** 2 for p in selected_points])
-            grater_mean = np.mean([p[2] for p in selected_points])
-        else:
-            return None
+        bd_mean = np.mean([p[3] for p in selected_points])
+        mse = np.mean([(p[3] - bd_mean) ** 2 for p in selected_points])
+        grater_mean = np.mean([p[2] for p in selected_points])
+        if not selected_points:
+            print(f"bad data: {idx=}, {self.exp_datas[idx]}")
+            new_idx = random.ranint(0, len(self))
+            return self[new_idx]
         
         return (
             torch.tensor(list(self.norm_params(params).values()), dtype=torch.float32),
