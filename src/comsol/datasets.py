@@ -30,7 +30,7 @@ class FieldDataset(Dataset):
     def __len__(self):
         return len(self.exp_datas)
 
-    def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor] | None:
         """fielddataset getitem
 
         Args:
@@ -44,9 +44,13 @@ class FieldDataset(Dataset):
         params = Config(self.param_datas[idx])["curr_task"]
         bds = [self.get_bd_data_by_x(x, k) for x, k, _ in ava_points]
         selected_points = self.select_min_error_points(ava_points, bds)
-        bd_mean = np.mean([p[3] for p in selected_points])
-        mse = np.mean([(p[3] - bd_mean) ** 2 for p in selected_points])
-        grater_mean = np.mean([p[2] for p in selected_points])
+        if selected_points:
+            bd_mean = np.mean([p[3] for p in selected_points])
+            mse = np.mean([(p[3] - bd_mean) ** 2 for p in selected_points])
+            grater_mean = np.mean([p[2] for p in selected_points])
+        else:
+            return None
+        
         return (
             torch.tensor(list(self.norm_params(params).values()), dtype=torch.float32),
             torch.tensor([self.norm_mse(mse), grater_mean], dtype=torch.float32)
