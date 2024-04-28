@@ -25,7 +25,7 @@ class MLP(nn.Module):
             nn.Linear(2**6, 2**7),
             nn.ReLU(),
             nn.Linear(2**7, out_nums),
-            nn.ReLU(),
+            # nn.ReLU(),
             # 能带值必然是正值，ReLU一下
         )
 
