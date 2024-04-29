@@ -23,6 +23,7 @@ class FieldDataset(Dataset):
         
         self.threshold = float(cfg["train"]["threshold"])
         self.mse_norm = float(cfg["train"]["mse_norm"])
+        self.params = cfg["cell"]
         if cfg["train"]["params_norm_dict"] is None:
             raise ValueError("params_regress must be provided")
         else:
@@ -50,20 +51,27 @@ class FieldDataset(Dataset):
         grater_mean = np.mean([p[2] for p in selected_points])
         if not selected_points:
             print(f"bad data: {idx=}, {self.exp_datas[idx]}")
-            new_idx = random.ranint(0, len(self))
+            new_idx = random.randint(0, len(self))
             return self[new_idx]
         
         return (
-            torch.tensor(list(self.norm_params(params).values()), dtype=torch.float32),
+            torch.tensor(self.norm_params(params), dtype=torch.float32),
             torch.tensor([self.norm_mse(mse), grater_mean], dtype=torch.float32)
         )
         
     def norm_params(self, params):
-        normed = {k: v / float(self.params_regress[k]) for k, v in params.items()}
+        # normed = {k: v / float(self.params_regress[k]) for k, v in params.items()}
+        normed = []
+        for k, v in params.items():
+            curr_max, curr_min = float(self.params[k]["max"]), float(self.params[k]["min"])
+            normed.append((v - curr_min) / (curr_max - curr_min))
         return normed
         
     def denorm_params(self, params):
-        denormed = {k: v * float(self.params_regress[k]) for k, v in params.items()}
+        denormed = []
+        for k, v in params.items():
+            curr_max, curr_min = float(self.params[k]["max"]), float(self.params[k]["min"])
+            denormed.append(v * (curr_max - curr_min) + curr_min)
         return denormed
     
     def norm_mse(self, mse):
