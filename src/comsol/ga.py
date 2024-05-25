@@ -44,6 +44,10 @@ def min_mse_and_central_field(solution, net):
     mse, grater_mean = net(torch.tensor([solution]).float()).detach().numpy().flatten()
     return -mse, grater_mean
 
+def central_field(solution, net):
+    finall_mean = net(torch.tensor([solution]).float()).detach().numpy().flatten()
+    return finall_mean
+
 
 def fit(ckpt, pkl_path, cfg: Config):
     net = MLP(cfg)
@@ -57,6 +61,8 @@ def fit(ckpt, pkl_path, cfg: Config):
         fitness_func = fitness_warper(max_min_distance_six, net)
     elif cfg["dataset"]["sampler"] == "field":
         fitness_func = fitness_warper(min_mse_and_central_field, net)
+    elif cfg["dataset"]["sampler"] == "field_single":
+        fitness_func = fitness_warper(central_field, net)
     else:
         raise ValueError(f"Unknown sampler: {cfg['dataset']['sampler']}")
 

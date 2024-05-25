@@ -11,22 +11,25 @@ class MLP(nn.Module):
             out_nums = 6
         elif cfg["dataset"]["sampler"] == "field":
             out_nums = 2
+        elif cfg["dataset"]["sampler"] == "field_single":
+            out_nums = 1
+        elif cfg["dataset"]["sampler"] == "single_point":
+            out_nums = 1
+        elif cfg["dataset"]["sampler"] == "single_point_wo_rr":
+            out_nums = 1
+            input_nums = input_nums - 1
         else:
             raise ValueError(f"Unknown sampler: {cfg['dataset']['sampler']}")
+        hidden_layers = []
+        hidden_layers_nums = cfg["train"]["hidden_layers"]
+        for i in range(hidden_layers_nums):
+            hidden_layers.append(nn.Linear(2**(3 + i), 2**(3 + i + 1)))
+            hidden_layers.append(nn.ReLU())
         self.model = nn.Sequential(
             nn.Linear(input_nums, 2**3),
             nn.ReLU(),
-            nn.Linear(2**3, 2**4),
-            nn.ReLU(),
-            nn.Linear(2**4, 2**5),
-            nn.ReLU(),
-            nn.Linear(2**5, 2**6),
-            nn.ReLU(),
-            nn.Linear(2**6, 2**7),
-            nn.ReLU(),
-            nn.Linear(2**7, out_nums),
-            # nn.ReLU(),
-            # 能带值必然是正值，ReLU一下
+            *hidden_layers,
+            nn.Linear(2**(3 + hidden_layers_nums), out_nums),
         )
 
     def forward(self, x):

@@ -24,31 +24,55 @@ class FieldDataset(Dataset):
         self.threshold = float(cfg["train"]["threshold"])
         self.mse_norm = float(cfg["train"]["mse_norm"])
         self.params = cfg["cell"]
+        
+        self.cfg = cfg
         if cfg["train"]["params_norm_dict"] is None:
             raise ValueError("params_regress must be provided")
         else:
             self.params_regress = cfg["train"]["params_norm_dict"]
 
     def __len__(self):
-        return len(self.exp_datas)
+        return min(len(self.exp_datas), len(self.param_datas))
 
-    def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor] | None:
+    def __getitem__(self, idx) -> tuple[torch.Tensor, torch.Tensor]:
         """fielddataset getitem
 
         Args:
             idx (int): exp index
 
         Returns:
-            tuple: (params, (mse, grater_mean))
+            tuple: (params, (mse, finall_mean))
         """
         assert int(self.param_datas[idx].parent.stem.split("_")[-1]) == int(self.exp_datas[idx].stem.split("_")[-1]) - 1
         ava_points = self.central_points(self.exp_datas[idx])
         params = Config(self.param_datas[idx])["curr_task"]
+        if self.cfg["dataset"]["sampler"] in ("single_point", "single_point_wo_rr"):
+            if ava_points and ava_points[0][0] == 0:
+                if self.cfg["dataset"]["bad_data_filter"]:
+                    x_idxs = [p[0] for p in ava_points]
+                    if 5 in x_idxs:
+                        return (
+                    torch.tensor(self.norm_params(params), dtype=torch.float32),
+                    torch.tensor([ava_points[0][2]], dtype=torch.float32)
+                )
+                    else:
+                        # print(f"{idx=}, cant find idx-5 points, fallback to random")
+                        new_idx = random.randint(0, len(self))
+                        return self[new_idx]
+                else:
+                    return (
+                        torch.tensor(self.norm_params(params), dtype=torch.float32),
+                        torch.tensor([ava_points[0][2]], dtype=torch.float32)
+                    )
+            else:
+                print(f"{idx=}, cant find idx-0 points, fallback to random")
+                new_idx = random.randint(0, len(self))
+                return self[new_idx]
         bds = [self.get_bd_data_by_x(x, k) for x, k, _ in ava_points]
         selected_points = self.select_min_error_points(ava_points, bds)
         bd_mean = np.mean([p[3] for p in selected_points])
         mse = np.mean([(p[3] - bd_mean) ** 2 for p in selected_points])
-        grater_mean = np.mean([p[2] for p in selected_points])
+        finall_mean = np.mean([p[2] for p in selected_points])
         if not selected_points:
             print(f"bad data: {idx=}, {self.exp_datas[idx]}")
             new_idx = random.randint(0, len(self))
@@ -56,13 +80,15 @@ class FieldDataset(Dataset):
         
         return (
             torch.tensor(self.norm_params(params), dtype=torch.float32),
-            torch.tensor([self.norm_mse(mse), grater_mean], dtype=torch.float32)
+            torch.tensor([self.norm_mse(mse), finall_mean], dtype=torch.float32)
         )
         
     def norm_params(self, params):
         # normed = {k: v / float(self.params_regress[k]) for k, v in params.items()}
         normed = []
         for k, v in params.items():
+            if self.cfg["dataset"]["sampler"] == "single_point_wo_rr" and k == "rr":
+                continue
             curr_max, curr_min = float(self.params[k]["max"]), float(self.params[k]["min"])
             normed.append((v - curr_min) / (curr_max - curr_min))
         return normed
@@ -138,11 +164,22 @@ class FieldDataset(Dataset):
         
         hf = len(grad_avgs)//2
         central_val = grad_avgs[hf]
-        else_val = np.mean(np.concatenate([grad_avgs[:hf], grad_avgs[hf+1:]]))
-        grater = (central_val - else_val) / else_val
-        if grater > self.threshold:
-            return grater
+        if self.cfg["dataset"]["feature"] == "mse":
+            error = np.array(grad_avgs) - central_val
+            mse = (error / central_val).var()
+            if mse < self.threshold:
+                return mse
+            else:
+                return None
+        elif self.cfg["dataset"]["feature"] == "percentage":
+            else_val = np.mean(np.concatenate([grad_avgs[:hf], grad_avgs[hf+1:]]))
+            res = (central_val - else_val) / else_val
+            if res > self.threshold:
+                return res
+            else:
+                return None
         else:
-            return None
+            raise ValueError("Config.dataset.feature is not set!")
+
 
 

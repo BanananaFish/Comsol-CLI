@@ -35,11 +35,13 @@ export:
     # - "..."
 
 train:
-  epoch: 200
-  batch_size: 16
-  lr: 0.0001
-  early_stop: 30
-  threshold: 0.6
+  epoch: 50
+  batch_size: 32
+  hidden_layers: 6
+  lr: 1e-2
+  weight_decay: 0
+  early_stop: 5
+  threshold: 0.2
   mse_norm: 1e26
   loss_weight: 
     - 1
@@ -52,4 +54,6 @@ train:
     rr: 3e-8
 
 dataset:
-  sampler: field # six_points, four_points, field, lowest
+  sampler: single_point_wo_rr # six_points, four_points, field, lowest, field_single, field, single_point
+  bad_data_filter: True
+  feature: mse

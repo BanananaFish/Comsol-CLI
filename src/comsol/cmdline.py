@@ -87,7 +87,7 @@ def train(exps, config, ckpt_path):
         f"Training model with saved {exps}, CFG: {config}, ckpt_path: {ckpt_path}"
     )
     from comsol.model import MLP
-    from comsol.utils import Config, Trainer
+    from comsol.utils import Config, Trainer, EarlyStop
     from comsol.datasets import FieldDataset
 
     cfg = Config(config)
@@ -96,8 +96,30 @@ def train(exps, config, ckpt_path):
     trainer = Trainer(dataset, model, cfg, ckpt_path)
     try:
         trainer.train()
-    except (KeyboardInterrupt, Trainer.EarlyStop):
+    except (KeyboardInterrupt, EarlyStop):
         trainer.save_ckpt(f"earlystop_best_{trainer.best_loss:.6f}", best=True)
+        
+        
+@main.command()
+@click.option("--exps", help="Path to saved exps.", default="exp1")
+@click.option("--config", help="Path to the config yaml.", default="config/cell.yaml")
+@click.option("--ckpt", help="Path to the checkpoint file.")
+def test(exps, config, ckpt):
+    console.log(":baseball: [bold magenta italic]Comsol CLI! by Bananafish[/]")
+    click.echo(
+        f"Testing model with saved {exps}, CFG: {config}, ckpt: {ckpt}"
+    )
+    from comsol.model import MLP
+    from comsol.utils import Config, Trainer
+    from comsol.datasets import FieldDataset
+    import torch
+
+    cfg = Config(config)
+    dataset = FieldDataset(exps, cfg)
+    model = MLP(cfg)
+    model.load_state_dict(torch.load(ckpt))
+    trainer = Trainer(dataset, model, cfg, ckpt_path="ckpt/test", test=True)
+    trainer.test()
 
 
 @main.command()

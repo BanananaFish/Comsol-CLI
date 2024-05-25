@@ -10,6 +10,7 @@ import yaml
 from rich.progress import Progress
 from torch import nn
 from torch.utils.data import DataLoader, Dataset, random_split
+from sklearn.metrics import r2_score
 
 from comsol.console import console
 from comsol.interface import Param
@@ -71,19 +72,23 @@ class Config:
             yaml.dump(self.config, f)
 
 
-class Trainer:
-    class EarlyStop(Exception):
+class EarlyStop(Exception):
         pass
+class Trainer:
 
-    def __init__(self, dataset, model, cfg: Config, ckpt_path):
+
+    def __init__(self, dataset, model, cfg: Config, ckpt_path, test=False):
         self.model = model
         self.cfg = cfg
+        self.is_test = test
 
         self.epoch: int = cfg["train"]["epoch"]
         self.batch_size: int = cfg["train"]["batch_size"]
-        self.lr: int = cfg["train"]["lr"]
+        self.lr: float = float(cfg["train"]["lr"])
+        self.weight_decay: float = float(cfg["train"]["weight_decay"])
         self.loss = nn.MSELoss()
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr)
+        # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.best_loss = float("inf")
         self.best_ckpt = model.state_dict()
         self.stuck_count = 0
@@ -105,6 +110,13 @@ class Trainer:
         if torch.cuda.is_available():
             return obj.cuda()
         return obj
+    
+    def logging(self, msg: str, dump: bool=True):
+        console.log(msg)
+        if dump:
+            ckpt_path = self.get_curr_ckpt_path()
+            with open(ckpt_path / "train.log", "a+") as f:
+                f.write(msg + "\n")
 
     def train(self):
         self.model.train()
@@ -125,50 +137,61 @@ class Trainer:
                     loss = self.loss(y_pred, y)
                     loss.backward()
                     self.optimizer.step()
-                    if i % 50 == 0:
-                        console.log(
-                            f"Epoch [{epoch}/{self.cfg['train']['epoch']}], iter {i}, loss: {loss.item():.6f}"
-                        )
+                    if i % 10 == 0:
+                        self.logging(f"Epoch [{epoch}/{self.cfg['train']['epoch']}], iter {i}, loss: {loss.item():.6f}")
                 progress.stop_task(train_it_task)
                 progress.remove_task(train_it_task)
                 self.test()
             self.save_ckpt("lastest")
-            console.log(f"Training finished, best loss: {self.best_loss:.6f}")
+            self.logging(f"Training finished, best loss: {self.best_loss:.6f}")
             self.save_ckpt(f"best_loss_{self.best_loss:.6f}", best=True)
 
     def test(self):
         self.model.eval()
+        self.model = self.to_cuda(self.model)
         losses = 0
+        y_true = []
+        y_preds = []
         with torch.no_grad():
             for x, y in self.test_loader:
                 x, y = self.to_cuda(x), self.to_cuda(y)
                 y_pred = self.model(x)
                 losses += self.loss(y_pred, y)
+                y_true.extend(y.cpu().numpy())
+                y_preds.extend(y_pred.cpu().numpy())
+                
         now_loss = losses / len(self.test_loader)
-        console.log(f"Test loss: {now_loss:.6f}")
-        if now_loss < self.best_loss:
+        r2 = r2_score(y_true, y_preds)
+        self.logging(f"Test loss: {now_loss:.6f}, R2 score: {r2: .6f}")
+        if now_loss < self.best_loss and now_loss < 1e5:
             self.stuck_count = 0
             self.best_loss = now_loss
             self.best_ckpt = self.model.state_dict()
         else:
             self.stuck_count += 1
+            self.logging(f"[Early Stop {self.stuck_count}/{self.early_stop}] now_loss: {now_loss:.6f}, less than best {self.best_loss}")
             if self.stuck_count >= self.early_stop:
-                raise self.EarlyStop
-
-    def save_ckpt(self, name, best=False):
+                raise EarlyStop
+    
+    def get_curr_ckpt_path(self):
         ckpt_path = Path(self.ckpt_path) / f"{self.start_time:%Y.%m.%d_%H.%M.%S}"
         ckpt_path.mkdir(parents=True, exist_ok=True)
+        return ckpt_path
+
+    def save_ckpt(self, name, best=False):
+        ckpt_path = self.get_curr_ckpt_path()
 
         pth_path = ckpt_path / f"{name}.pth"
         cfg_path = ckpt_path / "config.yaml"
         if not cfg_path.exists():
             self.cfg.dump(cfg_path)
-            console.log(f"Dumped config to {cfg_path}")
+            self.logging(f"Dumped config to {cfg_path}")
         if best:
             torch.save(self.best_ckpt, pth_path)
         else:
             torch.save(self.model.state_dict(), pth_path)
-        console.log(f"Saved model to {pth_path}")
+        self.logging(f"Saved model to {pth_path}")
+
 
 
 class BandDataset(Dataset):
