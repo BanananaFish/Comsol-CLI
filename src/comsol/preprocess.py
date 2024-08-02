@@ -44,4 +44,4 @@ def run(src, dst):
             pickle.dump(curr_data, f)
 
 if __name__ == "__main__":
-    run("exports/5-8", "exports/5-8-avg")
+    run("exports/slit-5-28", "exports/slit-5-28-avg")

@@ -30,7 +30,8 @@ def sample_cood(csv_path: Path, frac: float = 0.1):
         header=None,
         names=lines[last_comment_line].strip("%\n").split(","),
     )
-    df = df.sample(frac=0.1)
+    if frac:
+        df = df.sample(frac=0.1)
 
     arr = df.values
     return arr

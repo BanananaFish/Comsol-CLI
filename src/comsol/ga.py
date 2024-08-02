@@ -1,12 +1,12 @@
 import warnings
 
-import numpy
+import numpy as np
 import pygad
 import torch
 
 from comsol.model import MLP
 from comsol.utils import Config
-from comsol.datasets import FieldDataset
+from comsol.datasets import BDDataset, FieldDataset
 
 warnings.filterwarnings("ignore")
 from comsol.console import console
@@ -25,7 +25,7 @@ def max_min_distance_four(solution, net):
     # 1 . 3
     # . . .
     # 0 . 2
-    Bs: numpy.ndarray = net(torch.tensor([solution]).float()).detach().numpy().flatten()
+    Bs: np.ndarray = net(torch.tensor([solution]).float()).detach().numpy().flatten()
     return abs(Bs[3] - Bs[2])
 
 
@@ -36,7 +36,7 @@ def max_min_distance_six(solution, net):
     # 0 . 2 . 4
     if any(solution < 0) or any(solution > 1):
         return -1000
-    Bs: numpy.ndarray = net(torch.tensor([solution]).float()).detach().numpy().flatten()
+    Bs: np.ndarray = net(torch.tensor([solution]).float()).detach().numpy().flatten()
     return min(abs(Bs[3] - Bs[2]), abs(Bs[5] - Bs[4]))
 
 
@@ -48,12 +48,23 @@ def central_field(solution, net):
     finall_mean = net(torch.tensor([solution]).float()).detach().numpy().flatten()
     return finall_mean
 
+def bd_wide(solution, net):
+    bd_points = net(torch.tensor([solution]).float()).detach().numpy().flatten()
+    gaps = []
+    for i in range(0, len(bd_points) - 2, 2):
+        gaps.append(min(bd_points[i + 2], bd_points[i + 3]) - max(bd_points[i], bd_points[i + 1]))
+    return max(gaps)
+
 
 def fit(ckpt, pkl_path, cfg: Config):
     net = MLP(cfg)
     net.load_state_dict(torch.load(ckpt))
     net.eval()
-    dataset = FieldDataset(pkl_path, cfg)
+    
+    if cfg["dataset"]["type"] == "field":
+        dataset = FieldDataset(pkl_path, cfg)
+    elif cfg["dataset"]["type"] == "bd":
+        dataset = BDDataset(pkl_path)
 
     if cfg["dataset"]["sampler"] == "four_points":
         fitness_func = fitness_warper(max_min_distance_four, net)
@@ -63,6 +74,8 @@ def fit(ckpt, pkl_path, cfg: Config):
         fitness_func = fitness_warper(min_mse_and_central_field, net)
     elif cfg["dataset"]["sampler"] == "field_single":
         fitness_func = fitness_warper(central_field, net)
+    elif cfg["dataset"]["sampler"] == "10_points":
+        fitness_func = fitness_warper(bd_wide, net)
     else:
         raise ValueError(f"Unknown sampler: {cfg['dataset']['sampler']}")
 
@@ -100,14 +113,25 @@ def fit(ckpt, pkl_path, cfg: Config):
     solution, solution_fitness, solution_idx = ga_instance.best_solution()
 
     prediction = net(torch.tensor([solution]).float()).detach().numpy().flatten()
-    mse, grater_mean = prediction
-    params_dict = dict(zip(cfg["cell"].keys(), solution))
-    solution, mse = dataset.denorm_params(params_dict), dataset.denorm_mse(mse)
-    # console.log(f"Parameters of the best solution : {solution}")
-    console.log(f"BEST Parameters (not denorm) : {params_dict}")
-    console.log(f"BEST Parameters : {solution}")
-    console.log(f"Predicted Band Outputs : {mse=}, {grater_mean=}")
-    console.log(f"Fitness: {solution_fitness}")
+    if isinstance(dataset, FieldDataset):
+        mse, grater_mean = prediction
+        params_dict = dict(zip(cfg["cell"].keys(), solution))
+        solution, mse = dataset.denorm_params(params_dict), dataset.denorm_mse(mse)
+        # console.log(f"Parameters of the best solution : {solution}")
+        console.log(f"BEST Parameters (not denorm) : {params_dict}")
+        console.log(f"BEST Parameters : {solution}")
+        console.log(f"Predicted Band Outputs : {mse=}, {grater_mean=}")
+        console.log(f"Fitness: {solution_fitness}")
+    elif isinstance(dataset, BDDataset):
+        denormed_solution = dataset.denorm_params(np.expand_dims(solution, axis=0))
+        denormed_bd = dataset.denorm_bd(prediction)
+        console.log(f"BEST Parameters : {denormed_solution}")
+        console.log(f"Predicted Band Outputs : {denormed_bd}")
+        console.log(f"Fitness: {solution_fitness}")
+        
+        
+    
+
 
 
 # TODO: auto evaluate

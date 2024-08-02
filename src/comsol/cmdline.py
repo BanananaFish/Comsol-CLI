@@ -4,8 +4,9 @@ from rich.console import Console
 from rich.progress import MofNCompleteColumn, Progress, SpinnerColumn
 
 from comsol.console import console
-from rich.traceback import install
-install(show_locals=True)
+from comsol.datasets import BDDataset
+# from rich.traceback import install
+# install(show_locals=True)
 
 
 @click.group()
@@ -88,10 +89,15 @@ def train(exps, config, ckpt_path):
     )
     from comsol.model import MLP
     from comsol.utils import Config, Trainer, EarlyStop
-    from comsol.datasets import FieldDataset
+    from comsol.datasets import FieldDataset, BDDataset
 
     cfg = Config(config)
-    dataset = FieldDataset(exps, cfg)
+    if cfg["dataset"]["type"] == "field":
+        dataset = FieldDataset(exps, cfg)
+    elif cfg["dataset"]["type"] == "bd":
+        dataset = BDDataset(exps)
+    else:
+        raise ValueError(f"Unknown dataset type: {cfg['dataset']['type']}")
     model = MLP(cfg)
     trainer = Trainer(dataset, model, cfg, ckpt_path)
     try:
@@ -115,7 +121,10 @@ def test(exps, config, ckpt):
     import torch
 
     cfg = Config(config)
-    dataset = FieldDataset(exps, cfg)
+    if cfg["dataset"]["type"] == "field":
+        dataset = FieldDataset(exps, cfg)
+    elif cfg["dataset"]["type"] == "bd":
+        dataset = BDDataset(exps)
     model = MLP(cfg)
     model.load_state_dict(torch.load(ckpt))
     trainer = Trainer(dataset, model, cfg, ckpt_path="ckpt/test", test=True)

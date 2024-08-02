@@ -54,6 +54,7 @@ train:
     rr: 3e-8
 
 dataset:
-  sampler: single_point_wo_rr # six_points, four_points, field, lowest, field_single, field, single_point
+  type: "bd"
+  sampler: 10_points # six_points, four_points, field, lowest, field_single, field, single_point, 10_points, single_point_wo_rr
   bad_data_filter: True
   feature: mse

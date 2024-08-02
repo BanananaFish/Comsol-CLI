@@ -75,8 +75,6 @@ class Config:
 class EarlyStop(Exception):
         pass
 class Trainer:
-
-
     def __init__(self, dataset, model, cfg: Config, ckpt_path, test=False):
         self.model = model
         self.cfg = cfg
@@ -87,8 +85,8 @@ class Trainer:
         self.lr: float = float(cfg["train"]["lr"])
         self.weight_decay: float = float(cfg["train"]["weight_decay"])
         self.loss = nn.MSELoss()
-        # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        # self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.best_loss = float("inf")
         self.best_ckpt = model.state_dict()
         self.stuck_count = 0
@@ -100,8 +98,8 @@ class Trainer:
         train_size = int(dataset_size * 0.8)
         test_size = dataset_size - train_size
         train_data, test_data = random_split(dataset, (train_size, test_size))
-        self.train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=6)
-        self.test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True, num_workers=6)
+        self.train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=0, pin_memory=True)
+        self.test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True, num_workers=0, pin_memory=True)
 
         self.start_time = datetime.now()
 

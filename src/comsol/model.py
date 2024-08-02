@@ -18,6 +18,8 @@ class MLP(nn.Module):
         elif cfg["dataset"]["sampler"] == "single_point_wo_rr":
             out_nums = 1
             input_nums = input_nums - 1
+        elif cfg["dataset"]["sampler"] == "10_points":
+            out_nums = 10
         else:
             raise ValueError(f"Unknown sampler: {cfg['dataset']['sampler']}")
         hidden_layers = []
