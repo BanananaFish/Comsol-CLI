@@ -31,6 +31,7 @@ class MLP(nn.Module):
             nn.Linear(input_nums, 2**3),
             nn.ReLU(),
             *hidden_layers,
+            nn.Dropout(cfg["train"]["dropout"]),
             nn.Linear(2**(3 + hidden_layers_nums), out_nums),
         )
 

@@ -85,7 +85,7 @@ def fit(ckpt, pkl_path, cfg: Config):
     sol_per_pop = 30
     num_genes = len(cfg["cell"].values())
     init_range_low = 0
-    init_range_high = 2
+    init_range_high = 1
 
     parent_selection_type = "sss"
     keep_parents = 1
@@ -125,7 +125,8 @@ def fit(ckpt, pkl_path, cfg: Config):
     elif isinstance(dataset, BDDataset):
         denormed_solution = dataset.denorm_params(np.expand_dims(solution, axis=0))
         denormed_bd = dataset.denorm_bd(prediction)
-        console.log(f"BEST Parameters : {denormed_solution}")
+        params_dict = {name: value for name, value in zip(dataset.params_name, denormed_solution[0])}
+        console.log(f"BEST Parameters : {params_dict}")
         console.log(f"Predicted Band Outputs : {denormed_bd}")
         console.log(f"Fitness: {solution_fitness}")
         

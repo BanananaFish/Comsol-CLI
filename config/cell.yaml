@@ -43,6 +43,7 @@ train:
   early_stop: 5
   threshold: 0.2
   mse_norm: 1e26
+  dropout: 0.1
   loss_weight: 
     - 1
     - 1

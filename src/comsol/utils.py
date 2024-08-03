@@ -1,8 +1,10 @@
+import os
 import pickle
 from datetime import datetime
 from itertools import product
 from os import PathLike
 from pathlib import Path
+import random
 
 import numpy as np
 import torch
@@ -14,6 +16,14 @@ from sklearn.metrics import r2_score
 
 from comsol.console import console
 from comsol.interface import Param
+
+
+def seed_everything(seed: int):
+    os.environ["PL_GLOBAL_SEED"] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
 
 class Config:
@@ -73,7 +83,9 @@ class Config:
 
 
 class EarlyStop(Exception):
-        pass
+    pass
+
+
 class Trainer:
     def __init__(self, dataset, model, cfg: Config, ckpt_path, test=False):
         self.model = model
@@ -85,7 +97,9 @@ class Trainer:
         self.lr: float = float(cfg["train"]["lr"])
         self.weight_decay: float = float(cfg["train"]["weight_decay"])
         self.loss = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        self.optimizer = torch.optim.Adam(
+            self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
         # self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         self.best_loss = float("inf")
         self.best_ckpt = model.state_dict()
@@ -98,8 +112,20 @@ class Trainer:
         train_size = int(dataset_size * 0.8)
         test_size = dataset_size - train_size
         train_data, test_data = random_split(dataset, (train_size, test_size))
-        self.train_loader = DataLoader(train_data, batch_size=self.batch_size, shuffle=True, num_workers=0, pin_memory=True)
-        self.test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True, num_workers=0, pin_memory=True)
+        self.train_loader = DataLoader(
+            train_data,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=0,
+            pin_memory=True,
+        )
+        self.test_loader = DataLoader(
+            test_data,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=0,
+            pin_memory=True,
+        )
 
         self.start_time = datetime.now()
 
@@ -108,8 +134,8 @@ class Trainer:
         if torch.cuda.is_available():
             return obj.cuda()
         return obj
-    
-    def logging(self, msg: str, dump: bool=True):
+
+    def logging(self, msg: str, dump: bool = True):
         console.log(msg)
         if dump:
             ckpt_path = self.get_curr_ckpt_path()
@@ -131,12 +157,13 @@ class Trainer:
                     x, y = self.to_cuda(x), self.to_cuda(y)
                     self.optimizer.zero_grad()
                     y_pred = self.model(x)
-                    # y_pred = torch.mul(y_pred, torch.tensor(self.cfg["train"]["loss_weight"]).cuda())
                     loss = self.loss(y_pred, y)
                     loss.backward()
                     self.optimizer.step()
                     if i % 10 == 0:
-                        self.logging(f"Epoch [{epoch}/{self.cfg['train']['epoch']}], iter {i}, loss: {loss.item():.6f}")
+                        self.logging(
+                            f"Epoch [{epoch}/{self.cfg['train']['epoch']}], iter {i}, loss: {loss.item():.6f}"
+                        )
                 progress.stop_task(train_it_task)
                 progress.remove_task(train_it_task)
                 self.test()
@@ -144,33 +171,36 @@ class Trainer:
             self.logging(f"Training finished, best loss: {self.best_loss:.6f}")
             self.save_ckpt(f"best_loss_{self.best_loss:.6f}", best=True)
 
+    @torch.no_grad()
     def test(self):
         self.model.eval()
         self.model = self.to_cuda(self.model)
         losses = 0
         y_trues = np.array([])
         y_preds = np.array([])
-        with torch.no_grad():
-            for x, y in self.test_loader:
-                x, y = self.to_cuda(x), self.to_cuda(y)
-                y_pred = self.model(x)
-                losses += self.loss(y_pred, y)
-                y_trues = np.append(y_trues, y.cpu().numpy())
-                y_preds = np.append(y_preds, y_pred.cpu().numpy())
-                
+        for x, y in self.test_loader:
+            x, y = self.to_cuda(x), self.to_cuda(y)
+            y_pred = self.model(x)
+            losses += self.loss(y_pred, y)
+            y_trues = np.append(y_trues, y.cpu().numpy())
+            y_preds = np.append(y_preds, y_pred.cpu().numpy())
+
         now_loss = losses / len(self.test_loader)
         r2 = r2_score(y_trues, y_preds)
         self.logging(f"Test loss: {now_loss:.6f}, R2 score: {r2: .6f}")
-        if now_loss < self.best_loss and now_loss < 1e5:
-            self.stuck_count = 0
-            self.best_loss = now_loss
-            self.best_ckpt = self.model.state_dict()
-        else:
-            self.stuck_count += 1
-            self.logging(f"[Early Stop {self.stuck_count}/{self.early_stop}] now_loss: {now_loss:.6f}, less than best {self.best_loss}")
-            if self.stuck_count >= self.early_stop:
-                raise EarlyStop
-    
+        if not self.is_test:
+            if now_loss < self.best_loss and now_loss < 1e5:
+                self.stuck_count = 0
+                self.best_loss = now_loss
+                self.best_ckpt = self.model.state_dict()
+            else:
+                self.stuck_count += 1
+                self.logging(
+                    f"[Early Stop {self.stuck_count}/{self.early_stop}] now_loss: {now_loss:.6f}, less than best {self.best_loss:.6f}"
+                )
+                if self.stuck_count >= self.early_stop:
+                    raise EarlyStop
+
     def get_curr_ckpt_path(self):
         ckpt_path = Path(self.ckpt_path) / f"{self.start_time:%Y.%m.%d_%H.%M.%S}"
         ckpt_path.mkdir(parents=True, exist_ok=True)
@@ -189,7 +219,6 @@ class Trainer:
         else:
             torch.save(self.model.state_dict(), pth_path)
         self.logging(f"Saved model to {pth_path}")
-
 
 
 class BandDataset(Dataset):
