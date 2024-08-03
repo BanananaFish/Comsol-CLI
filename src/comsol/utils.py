@@ -148,18 +148,18 @@ class Trainer:
         self.model.eval()
         self.model = self.to_cuda(self.model)
         losses = 0
-        y_true = []
-        y_preds = []
+        y_trues = np.array([])
+        y_preds = np.array([])
         with torch.no_grad():
             for x, y in self.test_loader:
                 x, y = self.to_cuda(x), self.to_cuda(y)
                 y_pred = self.model(x)
                 losses += self.loss(y_pred, y)
-                y_true.extend(y.cpu().numpy())
-                y_preds.extend(y_pred.cpu().numpy())
+                y_trues = np.append(y_trues, y.cpu().numpy())
+                y_preds = np.append(y_preds, y_pred.cpu().numpy())
                 
         now_loss = losses / len(self.test_loader)
-        r2 = r2_score(y_true, y_preds)
+        r2 = r2_score(y_trues, y_preds)
         self.logging(f"Test loss: {now_loss:.6f}, R2 score: {r2: .6f}")
         if now_loss < self.best_loss and now_loss < 1e5:
             self.stuck_count = 0
